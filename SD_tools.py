@@ -10,12 +10,12 @@ SD_HEADERS = {
     "Content-Type": "application/json",
 }
 
-SD_API_URL = 'http://192.168.0.105:7860'
+SD_API_URL = 'http://192.168.0.103:7860'
 
 filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
                "bare skin", "pussy juice", "fucking", "stripped", "bare-skinned", "pussy juice", "NSFW", "NUDE", "NAKED", "PUSSY", "NIPPLES"]
 
-client = httpx.AsyncClient(timeout=3)
+client = httpx.AsyncClient()
 
 
 def dt_os():
@@ -30,9 +30,12 @@ class ImgTooLarge(Exception):
     pass
 
 
+class SDTimeout(Exception):
+    pass
+
 async def checksd() -> int:
     try:
-        resp = await client.get(url=f'{SD_API_URL}/')
+        resp = await client.get(url=f'{SD_API_URL}/', timeout=3)
     except Exception as e:
         print(e.__class__.__name__)
         return 0
@@ -41,7 +44,7 @@ async def checksd() -> int:
 
 async def image_from_url_to_b64str(image_url) -> str:
     try:
-        resp = await client.get(image_url)
+        resp = await client.get(image_url, timeout=30)
         if resp.status_code != 200:
             raise ImgNotFound
         if len(resp.content) > 1000000:
@@ -85,9 +88,12 @@ async def txt2img(prompt: str,
         "height": height,
         "negative_prompt": neg
     }
-    response = await client.post(
-        url=f'{SD_API_URL}/sdapi/v1/txt2img', json=generation_parameters)
+    try:
+        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/txt2img', json=generation_parameters, timeout=30)
+    except httpx.ConnectTimeout:
+        raise SDTimeout
     r = response.json()
+    print(response)
     for ind, img in enumerate(r['images']):
         image = Image.open(io.BytesIO(base64.b64decode(img)))
         png_payload = {
@@ -136,8 +142,10 @@ async def img2img(prompt: str,
         "height": vert,
         "negative_prompt": negative
     }
-    response = await client.post(
-        url=f'{SD_API_URL}/sdapi/v1/img2img', json=generation_parameters)
+    try:
+        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/img2img', json=generation_parameters, timeout=30)
+    except httpx.ConnectTimeout:
+        raise SDTimeout
     for ind, img in enumerate(response.json()['images']):
         try:
             image = Image.open(io.BytesIO(base64.b64decode(img)))

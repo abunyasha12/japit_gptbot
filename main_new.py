@@ -194,7 +194,7 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: typing.Litera
                        height="Vertical resolution, pixels",
                        width="Horizontal resolution, pixels")
 @app_commands.guilds(*guilds_ids)
-# @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
+@app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdimage(ctx: discord.Interaction,
                   prompt: str,
                   height: typing.Literal["448", "512", "640", "704", "768"],
@@ -227,7 +227,7 @@ async def sdimage(ctx: discord.Interaction,
                        height="Vertical resolution, pixels",
                        width="Horizontal resolution, pixels")
 @app_commands.guilds(*guilds_ids)
-# @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
+@app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdadv(ctx: discord.Interaction,
                 prompt: str,
                 negative_prompt: str,
@@ -263,7 +263,7 @@ async def sdadv(ctx: discord.Interaction,
                        denoising="Denoising value 0 - 1 with 0.05 increments",
                        image_url="URL for img2img image")
 @app_commands.guilds(*guilds_ids)
-# @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
+@app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdimg2img(ctx: discord.Interaction,
                     prompt: str,
                     negative_prompt: str,
@@ -297,6 +297,9 @@ async def sdimg2img(ctx: discord.Interaction,
     except SD.ImgTooLarge:
         await ctx.followup.send("Image too large! Max 1MB")
         log.info("Image too large")
+    except SD.SDTimeout:
+        await ctx.followup.send("SD timed out!")
+        log.warning("SD TIMED OUT")
     except Exception as e:
         log.warning(f"Unknown exception {e.__class__.__name__}")
         await ctx.followup.send(str(e))
