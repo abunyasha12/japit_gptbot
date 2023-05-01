@@ -13,7 +13,8 @@ SD_HEADERS = {
 SD_API_URL = 'http://192.168.0.103:7860'
 
 filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
-               "bare skin", "pussy juice", "fucking", "stripped", "bare-skinned", "pussy juice", "NSFW", "NUDE", "NAKED", "PUSSY", "NIPPLES"]
+               "bare skin", "pussy juice", "fucking", "stripped", "bare-skinned",
+               "pussy juice", "NSFW", "NUDE", "NAKED", "PUSSY", "NIPPLES"]
 
 client = httpx.AsyncClient()
 
@@ -33,14 +34,17 @@ class ImgTooLarge(Exception):
 class SDTimeout(Exception):
     pass
 
-async def checksd() -> int:
+
+async def checksd() -> bool:
     try:
         resp = await client.get(url=f'{SD_API_URL}/', timeout=3)
+        if resp.status_code == 200:
+            return True
+        else:
+            return False
     except Exception as e:
         print(e.__class__.__name__)
-        return 0
-    return resp.status_code
-
+        return False
 
 async def image_from_url_to_b64str(image_url) -> str:
     try:
@@ -93,7 +97,6 @@ async def txt2img(prompt: str,
     except httpx.ConnectTimeout:
         raise SDTimeout
     r = response.json()
-    print(response)
     for ind, img in enumerate(r['images']):
         image = Image.open(io.BytesIO(base64.b64decode(img)))
         png_payload = {

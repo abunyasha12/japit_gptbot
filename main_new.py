@@ -88,16 +88,25 @@ class CrossButton(Button):
         await del_msg(interaction.message, interaction.user)
 
 
-class ReactionButton(Button):
-    def __init__(self):
-        super().__init__(label="Reactions work", disabled=True)
+class DView(View):
+    def __init__(self, timeout=360) -> None:
+        self.msg = None
+        super().__init__(timeout=timeout)
+        self.add_item(EnvelopeButton())
+        self.add_item(CrossButton())
+
+    async def on_timeout(self):
+        self.clear_items()
+        self.add_item(
+            Button(label="Please use reactions ✉️ 🗑️", disabled=True))
+        await self.msg.edit(view=self)  # type: ignore
 
 
 bot = Bot()
 cgpt = OA.ChatGPT(OPENAI_TOKEN)
 
 
-def check_sfw(channel_id):
+def check_sfw(channel_id) -> bool:
     if channel_id in sfw_channels:
         return True
     else:
@@ -162,10 +171,7 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: typing.Litera
     '''Request image from OpenAI DALL-E'''
     if ctx.channel_id not in allowed_channel:
         return
-    view = View()
-    view.add_item(EnvelopeButton())
-    view.add_item(CrossButton())
-    view.add_item(ReactionButton())
+    view = DView()
     log.info(
         f'DALL-E image requested by {ctx.user} in {ctx.channel} {ctx.channel_id}: {prompt}')
     await ctx.response.defer()
@@ -173,7 +179,7 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: typing.Litera
         image_url = await cgpt.generate_image(prompt=prompt, resolution=resolution)
         logimage(image_url)
         log.info(f'DALL-E image saved: {f"images/{dt_os()}_image.png"}')
-        await ctx.followup.send(content=image_url, view=view)
+        view.msg = await ctx.followup.send(content=image_url, view=view)
     except OA.InvalidRequest:
         await ctx.followup.send("InvalidRequest. Probably safety filters")
     except Exception:
@@ -196,20 +202,18 @@ async def sdimage(ctx: discord.Interaction,
         return
     vert_i = int(height)
     hor_i = int(width)
-    view = View()
-    view.add_item(EnvelopeButton())
-    view.add_item(CrossButton())
-    view.add_item(ReactionButton())
     log.info(
         f'SD image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
     await ctx.response.defer()
-    if await SD.checksd() != 200:
+    view = DView()
+    if await SD.checksd():
+        files = await SD.txt2img(prompt, vert_i, hor_i, sfw=check_sfw(ctx.channel_id))
+        log.info(f'SD image saved: {", ".join(files)}')
+        view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
+    else:
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
         return
-    files = await SD.txt2img(prompt, vert_i, hor_i, sfw=check_sfw(ctx.channel_id))
-    log.info(f'SD image saved: {", ".join(files)}')
-    await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
 
 
 @bot.tree.command(name="sd-advanced",
@@ -230,20 +234,18 @@ async def sdadv(ctx: discord.Interaction,
         return
     vert_i = int(height)
     hor_i = int(width)
-    view = View()
-    view.add_item(EnvelopeButton())
-    view.add_item(CrossButton())
-    view.add_item(ReactionButton())
+    view = DView()
     log.info(
         f'SD image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
     await ctx.response.defer()
-    if await SD.checksd() != 200:
+    if await SD.checksd():
+        files = await SD.txt2img(prompt, vert_i, hor_i, negative_prompt, sfw=check_sfw(ctx.channel_id))
+        log.info(f'SD image saved: {", ".join(files)}')
+        view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
+    else:
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
         return
-    files = await SD.txt2img(prompt, vert_i, hor_i, negative_prompt, sfw=check_sfw(ctx.channel_id))
-    log.info(f'SD image saved: {", ".join(files)}')
-    await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
 
 
 @bot.tree.command(name="sd-img2img",
@@ -262,27 +264,24 @@ async def sdimg2img(ctx: discord.Interaction,
                     height: typing.Literal["448", "512", "640", "704", "768"],
                     width:  typing.Literal["448", "512", "640", "704", "768"],
                     denoising: float,
-                    image_url: str):
+                    image_url: str) -> None:
     '''Request an image-to-image generation from Stable Diffusion.'''
     if ctx.channel_id not in allowed_channel:
         return
     vert_i = int(height)
     hor_i = int(width)
-    view = View()
-    view.add_item(EnvelopeButton())
-    view.add_item(CrossButton())
-    view.add_item(ReactionButton())
+    view = DView()
     log.info(
         f'SD i2i image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
     await ctx.response.defer()
-    if await SD.checksd() != 200:
+    if await SD.checksd() is not True:
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
         return
     try:
         files = await SD.img2img(prompt, vert_i, hor_i, denoising, image_url, negative_prompt, check_sfw(ctx.channel_id))
         log.info(f'SD image saved: {", ".join(files)}')
-        await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
+        view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
     except SD.ImgNotFound:
         await ctx.followup.send(f"Image not found! URL provided: {image_url}")
         log.info("Image not found")
