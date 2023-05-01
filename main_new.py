@@ -6,7 +6,6 @@ from discord.ui import View, Button
 from discord import app_commands
 from dotenv import load_dotenv
 import requests
-# import deepl
 import logging
 import logging.handlers
 import typing
@@ -135,13 +134,6 @@ async def del_msg(msg: discord.Message, requester: discord.User | discord.Member
     log.info(f'{requester} requested DELETION of: {msg.id}')
     await msg.edit(content=f"Deleted on the request from **{requester}**", embeds=[], attachments=[], view=None)
     log.info(f'{msg.id} DELETED')
-
-
-# async def tlation(text, target_lang="RU"):
-#     tlator = deepl.Translator(DEEPL_TOKEN)
-#     response = tlator.translate_text(text=text, target_lang=target_lang)
-#     print(response)
-#     return (response)
 
 
 @bot.event
