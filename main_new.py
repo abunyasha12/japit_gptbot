@@ -215,7 +215,7 @@ async def sdimage(ctx: discord.Interaction,
     if await SD.checksd():
         files = await SD.txt2img(prompt_f, int(height), int(width), negative=str(negative or ''), sfw=sfw)
         log.info(f'SD image saved: {", ".join(files)}')
-        view.msg = await ctx.followup.send(content=f"**PROMPT**: {prompt_f}", files=[discord.File(file) for file in files], view=view)
+        view.msg = await ctx.followup.send(content=f"**PROMPT**: *{prompt_f}*", files=[discord.File(file) for file in files], view=view)
     else:
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
