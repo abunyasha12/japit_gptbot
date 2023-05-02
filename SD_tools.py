@@ -29,10 +29,16 @@ client = httpx.AsyncClient()
 
 def cleanprompt(prompt: str, sfw: bool = True) -> str:
     pl = []
-    for i in prompt.lower().split():
-        pl.append(i.replace(',', '').replace('.', ''))
+    for i in prompt.lower().split(sep=','):
+        if i != '':
+            pl.append(i.replace('.', '').strip())
+    print(len(pl))
     if sfw:
-        filtered = ", ".join([i for i in pl if i not in filterwords])
+        for word in filterwords:
+            for pl_wrd in list(pl):
+                if word in pl_wrd:
+                    pl.remove(pl_wrd)
+        filtered = ", ".join(pl)
     else:
         filtered = ", ".join(pl)
     return filtered
