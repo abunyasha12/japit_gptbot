@@ -3,7 +3,7 @@ from datetime import datetime
 from PIL import Image, PngImagePlugin
 import base64
 import io
-
+from typing import Literal
 
 SD_HEADERS = {
     "Accept": "application/json",
@@ -13,13 +13,32 @@ SD_HEADERS = {
 SD_API_URL = 'http://192.168.0.103:7860'
 
 filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
-               "bare skin", "pussy juice", "fucking", "stripped", "bare-skinned",
-               "pussy juice", "NSFW", "NUDE", "NAKED", "PUSSY", "NIPPLES"]
+               "bare skin", "pussy juice", "fucking", "stripped",
+               "bare-skinned", "pussy juice"]
+
+loralist = Literal[' <lora:anime_screencap_v2-000030:1>',
+                   ' <lora:animeoutlineV4_16:1>',
+                   ' <lora:helltaker:0.7>',
+                   ' <lora:hutao:0.7>',
+                   ' <lora:thickline_fp16:1>']
+
+resolutions = Literal["448", "512", "640", "704", "768"]
 
 client = httpx.AsyncClient()
 
 
-def dt_os():
+def cleanprompt(prompt: str, sfw: bool = True) -> str:
+    pl = []
+    for i in prompt.lower().split():
+        pl.append(i.replace(',', '').replace('.', ''))
+    if sfw:
+        filtered = ", ".join([i for i in pl if i not in filterwords])
+    else:
+        filtered = ", ".join(pl)
+    return filtered
+
+
+def dt_os() -> str:
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
@@ -46,6 +65,7 @@ async def checksd() -> bool:
         print(e.__class__.__name__)
         return False
 
+
 async def image_from_url_to_b64str(image_url) -> str:
     try:
         resp = await client.get(image_url, timeout=30)
@@ -67,15 +87,14 @@ async def image_from_url_to_b64str(image_url) -> str:
 async def txt2img(prompt: str,
                   height: int,
                   width: int,
-                  negative: str = "blurry, EasyNegative",
+                  negative: str,
                   sfw: bool = True):
-    pl = prompt.split(sep=", ")
+    if negative == '':
+        negative = "blurry, EasyNegative, badhandv4"
     if sfw:
         neg = negative + ", nude, pussy, nipples"
-        filtered = ", ".join([i for i in pl if i not in filterwords])
     else:
         neg = negative
-        filtered = ", ".join(pl)
     genname = f"{dt_os()}_image"
     filenames = []
     if height > 640 or width > 640:
@@ -83,7 +102,7 @@ async def txt2img(prompt: str,
     else:
         batch = 2
     generation_parameters = {
-        "prompt": filtered,
+        "prompt": prompt,
         "sampler_name": "DPM++ 2S a Karras",
         "batch_size": batch,
         "n_iter": 1,
@@ -92,6 +111,7 @@ async def txt2img(prompt: str,
         "height": height,
         "negative_prompt": neg
     }
+    print(f'prompt: {prompt} \nnegative prompt: {neg}')
     try:
         response = await client.post(url=f'{SD_API_URL}/sdapi/v1/txt2img', json=generation_parameters, timeout=30)
     except httpx.ConnectTimeout:

@@ -1,6 +1,10 @@
 from revChatGPT.V3 import Chatbot
 import openai
 import openai.error as oe
+from typing import Literal
+
+
+resolutions = Literal["256", "512"]
 
 
 class InvalidRequest(Exception):

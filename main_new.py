@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import requests
 import logging
 import logging.handlers
-import typing
+from typing import Optional
 import OA_tools as OA
 import SD_tools as SD
 
@@ -65,7 +65,7 @@ class Bot(commands.Bot):
 
 
 class EnvelopeButton(Button):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(emoji="✉️")
 
     async def callback(self, interaction: discord.Interaction):
@@ -76,7 +76,7 @@ class EnvelopeButton(Button):
 
 
 class CrossButton(Button):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(emoji="🗑️")
 
     async def callback(self, interaction: discord.Interaction):
@@ -89,7 +89,7 @@ class CrossButton(Button):
 
 
 class DView(View):
-    def __init__(self, timeout=360) -> None:
+    def __init__(self, timeout=300) -> None:
         self.msg = None
         super().__init__(timeout=timeout)
         self.add_item(EnvelopeButton())
@@ -146,10 +146,9 @@ async def del_msg(msg: discord.Message, requester: discord.User | discord.Member
 
 
 @bot.event
-async def on_command_error(ctx, error) -> None:
+async def on_command_error(ctx: discord.Interaction, error) -> None:
     if isinstance(error, commands.CommandOnCooldown):
-        await ctx.defer()
-        await ctx.reply(f"Try again in {round(error.retry_after, 1)} seconds.")
+        await ctx.response.send_message(f"Try again in {round(error.retry_after, 1)} seconds.")
 
 
 @bot.tree.error
@@ -167,7 +166,7 @@ async def on_ready() -> None:
 @app_commands.describe(prompt="Image prompt", resolution="Resolution, X*X pixels")
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
-async def image(ctx: discord.Interaction, prompt: str, resolution: typing.Literal["256", "512"]) -> None:
+async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolutions) -> None:
     '''Request image from OpenAI DALL-E'''
     if ctx.channel_id not in allowed_channel:
         return
@@ -186,62 +185,37 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: typing.Litera
         await ctx.followup.send("Unknown exception.")
 
 
-@bot.tree.command(name="sd-image",
+@bot.tree.command(name="sdimage",
                   description="Request image from Stable Diffusion. (may not be available)")
 @app_commands.describe(prompt="generation prompt",
                        height="Vertical resolution, pixels",
-                       width="Horizontal resolution, pixels")
+                       width="Horizontal resolution, pixels",
+                       lora1="First Lora",
+                       lora2="Second Lora",
+                       negative="Negative prompt")
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdimage(ctx: discord.Interaction,
                   prompt: str,
-                  height: typing.Literal["448", "512", "640", "704", "768"],
-                  width:  typing.Literal["448", "512", "640", "704", "768"]) -> None:
+                  height: SD.resolutions,
+                  width:  SD.resolutions,
+                  lora1: Optional[SD.loralist],
+                  lora2: Optional[SD.loralist],
+                  negative: Optional[str]) -> None:
     '''Request image from Stable Diffusion.'''
     if ctx.channel_id not in allowed_channel:
         return
-    vert_i = int(height)
-    hor_i = int(width)
+    sfw = check_sfw(ctx.channel_id)
+    prompt_f = SD.cleanprompt(prompt, sfw) + \
+        str(lora1 or '') + str(lora2 or '')
     log.info(
-        f'SD image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
+        f'SD image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt_f}')
     await ctx.response.defer()
     view = DView()
     if await SD.checksd():
-        files = await SD.txt2img(prompt, vert_i, hor_i, sfw=check_sfw(ctx.channel_id))
+        files = await SD.txt2img(prompt_f, int(height), int(width), negative=str(negative or ''), sfw=sfw)
         log.info(f'SD image saved: {", ".join(files)}')
-        view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
-    else:
-        await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
-        log.warning("SD unavailable!")
-        return
-
-
-@bot.tree.command(name="sd-advanced",
-                  description="Request image from Stable Diffusion. (may not be available)")
-@app_commands.describe(prompt="generation prompt",
-                       negative_prompt="Negative prompt",
-                       height="Vertical resolution, pixels",
-                       width="Horizontal resolution, pixels")
-@app_commands.guilds(*guilds_ids)
-@app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
-async def sdadv(ctx: discord.Interaction,
-                prompt: str,
-                negative_prompt: str,
-                height: typing.Literal["448", "512", "640", "704", "768"],
-                width:  typing.Literal["448", "512", "640", "704", "768"]) -> None:
-    '''Request image from Stable Diffusion. Advanced mode.'''
-    if ctx.channel_id not in allowed_channel:
-        return
-    vert_i = int(height)
-    hor_i = int(width)
-    view = DView()
-    log.info(
-        f'SD image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
-    await ctx.response.defer()
-    if await SD.checksd():
-        files = await SD.txt2img(prompt, vert_i, hor_i, negative_prompt, sfw=check_sfw(ctx.channel_id))
-        log.info(f'SD image saved: {", ".join(files)}')
-        view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
+        view.msg = await ctx.followup.send(content=f"**PROMPT**: {prompt_f}", files=[discord.File(file) for file in files], view=view)
     else:
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
@@ -261,8 +235,8 @@ async def sdadv(ctx: discord.Interaction,
 async def sdimg2img(ctx: discord.Interaction,
                     prompt: str,
                     negative_prompt: str,
-                    height: typing.Literal["448", "512", "640", "704", "768"],
-                    width:  typing.Literal["448", "512", "640", "704", "768"],
+                    height: SD.resolutions,
+                    width:  SD.resolutions,
                     denoising: float,
                     image_url: str) -> None:
     '''Request an image-to-image generation from Stable Diffusion.'''
