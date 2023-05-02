@@ -31,7 +31,7 @@ def cleanprompt(prompt: str, sfw: bool = True) -> str:
     pl = []
     for i in prompt.lower().split(sep=','):
         if i != '':
-            pl.append(i.replace('.', '').strip())
+            pl.append(i.strip())
     print(len(pl))
     if sfw:
         for word in filterwords:
