@@ -14,18 +14,35 @@ class MyTranslator(app_commands.Translator):
         loc = context.location
         if (
             loc == CL.choice_name
-            or loc == CL.parameter_name
-            or loc == CL.command_name
+            # or loc == CL.parameter_name
+            # or loc == CL.command_name
         ):
             return text
         if locale == discord.Locale.russian:
             match text:
+                # Команды
+                case "chat":
+                    return "чат"
+                case "image":
+                    return text
+                case "sdimage":
+                    return text
+                case "img2img":
+                    return text
+                case "synchronise":
+                    return text
+                case "text":
+                    return "текст"
+                # Описания команд
                 case "Request image from Stable Diffusion (may not be available)":
-                    return "Запросить изображение через Stable Diffusion (может быть недоступно) TEST1"
+                    return "Запросить изображение через Stable Diffusion (может быть недоступно)"
                 case "Request chat completion from OpenAI ChatGPT":
-                    return "Запросить ответ от CHatGPT"
+                    return "Запросить ответ от ChatGPT"
                 case "Request image from DALL-E":
                     return "Запросить изображение от DALL-E"
+                case "sync commands":
+                    return "синхронизировать команды"
+                # Описания параметров команд
                 case "Image prompt":
                     return "Промпт для изображения"
                 case "Negative prompt":
@@ -46,11 +63,31 @@ class MyTranslator(app_commands.Translator):
                     return "Значение denoising от 0 до 1 с шагом 0.05"
                 case "Your message to ChatGPT":
                     return "Запрос для ChatGPT"
-                case "Try again in {round(error.retry_after)} seconds.":
-                    return "Попробуйте еще раз через {round(error.retry_after)} сек"
+                # Параметры команд
+                case "prompt":
+                    return "промпт"
+                case "resolution":
+                    return "разрешение"
+                case "height":
+                    return "высота"
+                case "width":
+                    return "ширина"
+                case "negative":
+                    return "негатив"
+                case "denoising":
+                    return text
+                case "image_url":
+                    return "ссылка_на_картинку"
+                case "lora1":
+                    return text
+                case "lora2":
+                    return text
+                # Прочее
                 case _e:
                     print(
                         f"COULD NOT TRANSLATE TO RUSSIAN: '{text}' LOCATION: '{loc}'")
                     return text
+        # elif locale == discord.Locale.british_english or locale == discord.Locale.american_english:
+        #     return text
         else:
             return text

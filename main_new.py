@@ -43,6 +43,7 @@ allowed_channel = [1093166962428882996,  # japit.gpt
                    ]
 
 guilds_ids = [208894633432973314,  # proving grounds
+              340723151967092746,  # pizdec
               333700550862569472  # japit
               ]
 
@@ -82,8 +83,8 @@ class CrossButton(Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         if (interaction.message is None
-            or interaction.message.interaction.user.id != interaction.user.id  # type: ignore
-            ):
+                or interaction.message.interaction.user.id != interaction.user.id  # type: ignore
+                ):
             return
         await del_msg(interaction.message, interaction.user)
 
@@ -138,7 +139,7 @@ async def del_msg(msg: discord.Message, requester: discord.User | discord.Member
 @bot.tree.error
 async def cooldown_error(interaction: discord.Interaction, error) -> None:
     if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(content=ls(f"Try again in {round(error.retry_after)} seconds."), ephemeral=True)
+        await interaction.response.send_message(content=f"Try again in {round(error.retry_after)} seconds.", ephemeral=True)
 
 
 @bot.event
@@ -213,7 +214,7 @@ async def sdimage(ctx: discord.Interaction,
 @bot.tree.command(name="img2img",
                   description="Request image from Stable Diffusion (may not be available)")
 @app_commands.describe(prompt=ls("Image prompt"),
-                       negative_prompt=ls("Negative prompt"),
+                       negative=ls("Negative prompt"),
                        height=ls("Vertical resolution, pixels"),
                        width=ls("Horizontal resolution, pixels"),
                        denoising=ls(
@@ -223,7 +224,7 @@ async def sdimage(ctx: discord.Interaction,
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdimg2img(ctx: discord.Interaction,
                     prompt: str,
-                    negative_prompt: str,
+                    negative: str,
                     height: SD.resolutions,
                     width:  SD.resolutions,
                     denoising: float,
@@ -242,7 +243,7 @@ async def sdimg2img(ctx: discord.Interaction,
         log.warning("SD unavailable!")
         return
     try:
-        files = await SD.img2img(prompt, int(height), int(width), denoising, image_url, negative_prompt, check_sfw(ctx.channel_id))
+        files = await SD.img2img(prompt, int(height), int(width), denoising, image_url, negative, check_sfw(ctx.channel_id))
         log.info(f'SD image saved: {", ".join(files)}')
         view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
     except SD.ImgNotFound:
@@ -269,11 +270,12 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
     if ctx.channel_id not in allowed_channel:
         return
 
+    text = text[:200]
     log.info(f'{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}')
     await ctx.response.defer()
     replied = await cgpt.chat_completion(text, ctx.channel_id)
-    await ctx.followup.send(content=replied)
-    log.info(f'ChatGPT reply in {ctx.channel} {ctx.channel_id} : {text}')
+    await ctx.followup.send(content=f'**{ctx.user}**: {text} \n**{bot.user}**: {replied}')
+    log.info(f'ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}')
 
 
 # @bot.event
@@ -312,16 +314,17 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
         await del_msg(msg, usr)
 
 
-@bot.command(hidden=True)
+@bot.hybrid_command(hidden=True)
 async def synchronise(ctx: commands.Context) -> None:
+    '''sync commands'''
     if (ctx.author.id not in users_allowed_to_sync
         or ctx.guild is None
-            ):
+        ):
         return
     print(f"sync requested in {ctx.guild}")
     bot.tree.copy_global_to(guild=ctx.guild)
     comms = await bot.tree.sync(guild=ctx.guild)
-    await ctx.reply(f"SYNCED {comms}")
+    await ctx.reply(f"SYNCED {comms}", ephemeral=True)
 
 
 if DISCORD_TOKEN is not None:
