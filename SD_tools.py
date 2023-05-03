@@ -13,16 +13,21 @@ SD_HEADERS = {
 SD_API_URL = 'http://192.168.0.103:7860'
 
 filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
-               "bare skin", "pussy juice", "fucking", "stripped",
-               "bare-skinned", "pussy juice"]
+               "bare skin", "fucking", "stripped",
+               "bare-skinned",
+               "topless"
+            ]
 
 loralist = Literal[' <lora:anime_screencap_v2-000030:1>',
                    ' <lora:animeoutlineV4_16:1>',
                    ' <lora:helltaker:0.7>',
                    ' <lora:hutao:0.7>',
-                   ' <lora:thickline_fp16:1>']
+                   ' <lora:thickline_fp16:1>'
+                ]
 
 resolutions = Literal["448", "512", "640", "704", "768"]
+
+base_negative = "blurry, EasyNegative, badhandv4"
 
 client = httpx.AsyncClient()
 
@@ -46,6 +51,12 @@ def cleanprompt(prompt: str, sfw: bool = True) -> str:
 
 def dt_os() -> str:
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+async def logimage(url) -> None:
+    resp = await client.get(url)
+    with open(f"images/{dt_os()}_image.png", "wb") as f:
+        f.write(resp.content)
 
 
 class ImgNotFound(Exception):
@@ -82,7 +93,7 @@ async def image_from_url_to_b64str(image_url) -> str:
         im2im = base64.b64encode(resp.content).decode()
         return im2im
     except httpx.ConnectTimeout:
-        raise ImgNotFound
+        raise ImgTooLarge
     except httpx.ConnectError:
         raise ImgNotFound
     except Exception as e:
@@ -94,9 +105,9 @@ async def txt2img(prompt: str,
                   height: int,
                   width: int,
                   negative: str,
-                  sfw: bool = True):
+                  sfw: bool = True) -> list[str]:
     if negative == '':
-        negative = "blurry, EasyNegative, badhandv4"
+        negative = base_negative
     if sfw:
         neg = negative + ", nude, pussy, nipples"
     else:
@@ -107,7 +118,7 @@ async def txt2img(prompt: str,
         batch = 1
     else:
         batch = 2
-    generation_parameters = {
+    gen_param = {
         "prompt": prompt,
         "sampler_name": "DPM++ 2S a Karras",
         "batch_size": batch,
@@ -119,7 +130,7 @@ async def txt2img(prompt: str,
     }
     print(f'prompt: {prompt} \nnegative prompt: {neg}')
     try:
-        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/txt2img', json=generation_parameters, timeout=30)
+        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/txt2img', json=gen_param, timeout=30)
     except httpx.ConnectTimeout:
         raise SDTimeout
     r = response.json()
@@ -142,12 +153,15 @@ async def img2img(prompt: str,
                   hor: int,
                   denoising: float,
                   im2im_url: str,
-                  negative: str = "blurry, EasyNegative, nude, nsfw, naked, pussy, nipples",
+                  negative: str,
                   sfw: bool = True
-                  ):
+                  ) -> list[str]:
+    if negative == '':
+        negative = base_negative
     if sfw:
-        for fw in filterwords:
-            prompt = prompt.replace(fw, "")
+        neg = negative + ", nude, pussy, nipples"
+    else:
+        neg = negative
     genname = f"{dt_os()}_image"
     filenames = []
     try:
@@ -158,7 +172,7 @@ async def img2img(prompt: str,
         batch = 1
     else:
         batch = 2
-    generation_parameters = {
+    gen_param = {
         "init_images": [im2im_i],
         "resize_mode": 1,
         "denoising_strength": denoising,
@@ -169,10 +183,10 @@ async def img2img(prompt: str,
         "steps": 21,
         "width": hor,
         "height": vert,
-        "negative_prompt": negative
+        "negative_prompt": neg
     }
     try:
-        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/img2img', json=generation_parameters, timeout=30)
+        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/img2img', json=gen_param, timeout=30)
     except httpx.ConnectTimeout:
         raise SDTimeout
     for ind, img in enumerate(response.json()['images']):

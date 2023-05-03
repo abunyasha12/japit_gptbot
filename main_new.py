@@ -1,11 +1,9 @@
-from datetime import datetime
 import discord
 import os
 from discord.ext import commands
 from discord.ui import View, Button
 from discord import app_commands
 from dotenv import load_dotenv
-import requests
 import logging
 import logging.handlers
 from typing import Optional
@@ -113,16 +111,6 @@ def check_sfw(channel_id) -> bool:
         return False
 
 
-def dt_os() -> str:
-    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-
-def logimage(url) -> None:
-    response = requests.get(url)
-    with open(f"images/{dt_os()}_image.png", "wb") as f:
-        f.write(response.content)
-
-
 async def send_dm(msg: discord.Message, usr: discord.User | discord.Member) -> None:
     log.info(f'{usr} requested DM of: {msg.id}')
 
@@ -176,8 +164,8 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolution
     await ctx.response.defer()
     try:
         image_url = await cgpt.generate_image(prompt=prompt, resolution=resolution)
-        logimage(image_url)
-        log.info(f'DALL-E image saved: {f"images/{dt_os()}_image.png"}')
+        await SD.logimage(image_url)
+        log.info(f'DALL-E image saved: {f"images/{SD.dt_os()}_image.png"}')
         view.msg = await ctx.followup.send(content=image_url, view=view)
     except OA.InvalidRequest:
         await ctx.followup.send("InvalidRequest. Probably safety filters")
@@ -201,7 +189,7 @@ async def sdimage(ctx: discord.Interaction,
                   width:  SD.resolutions,
                   lora1: Optional[SD.loralist],
                   lora2: Optional[SD.loralist],
-                  negative: Optional[str]) -> None:
+                  negative_prompt: Optional[str]) -> None:
     '''Request image from Stable Diffusion.'''
     if ctx.channel_id not in allowed_channel:
         return
@@ -213,7 +201,7 @@ async def sdimage(ctx: discord.Interaction,
     await ctx.response.defer()
     view = DView()
     if await SD.checksd():
-        files = await SD.txt2img(prompt_f, int(height), int(width), negative=str(negative or ''), sfw=sfw)
+        files = await SD.txt2img(prompt_f, int(height), int(width), str(negative_prompt or ''), sfw)
         log.info(f'SD image saved: {", ".join(files)}')
         view.msg = await ctx.followup.send(content=f"**PROMPT**: *{prompt_f}*", files=[discord.File(file) for file in files], view=view)
     else:
@@ -242,18 +230,16 @@ async def sdimg2img(ctx: discord.Interaction,
     '''Request an image-to-image generation from Stable Diffusion.'''
     if ctx.channel_id not in allowed_channel:
         return
-    vert_i = int(height)
-    hor_i = int(width)
     view = DView()
     log.info(
         f'SD i2i image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
     await ctx.response.defer()
-    if await SD.checksd() is not True:
+    if not await SD.checksd():
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
         return
     try:
-        files = await SD.img2img(prompt, vert_i, hor_i, denoising, image_url, negative_prompt, check_sfw(ctx.channel_id))
+        files = await SD.img2img(prompt, int(height), int(width), denoising, image_url, negative_prompt, check_sfw(ctx.channel_id))
         log.info(f'SD image saved: {", ".join(files)}')
         view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
     except SD.ImgNotFound:
