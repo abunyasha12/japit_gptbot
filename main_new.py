@@ -3,12 +3,14 @@ import os
 from discord.ext import commands
 from discord.ui import View, Button
 from discord import app_commands
+from discord.app_commands import locale_str as ls
 from dotenv import load_dotenv
 import logging
 import logging.handlers
 from typing import Optional
 import OA_tools as OA
 import SD_tools as SD
+from TLator import MyTranslator
 
 
 log = logging.getLogger()
@@ -80,7 +82,7 @@ class CrossButton(Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         if (interaction.message is None
-                or interaction.message.interaction.user.id != interaction.user.id  # type: ignore
+            or interaction.message.interaction.user.id != interaction.user.id  # type: ignore
             ):
             return
         await del_msg(interaction.message, interaction.user)
@@ -133,31 +135,28 @@ async def del_msg(msg: discord.Message, requester: discord.User | discord.Member
     log.info(f'{msg.id} DELETED')
 
 
-@bot.event
-async def on_command_error(ctx: discord.Interaction, error) -> None:
-    if isinstance(error, commands.CommandOnCooldown):
-        await ctx.response.send_message(f"Try again in {round(error.retry_after, 1)} seconds.")
-
-
 @bot.tree.error
 async def cooldown_error(interaction: discord.Interaction, error) -> None:
     if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(f"Try again in {round(error.retry_after, 1)} seconds.", ephemeral=True)
+        await interaction.response.send_message(content=ls(f"Try again in {round(error.retry_after)} seconds."), ephemeral=True)
 
 
 @bot.event
 async def on_ready() -> None:
     log.info(f'Logged in as {bot.user}')
+    await bot.tree.set_translator(MyTranslator())
 
 
-@bot.tree.command(name="image", description="Request image from DALL-E.")
-@app_commands.describe(prompt="Image prompt", resolution="Resolution, X*X pixels")
+@bot.tree.command(name="image", description=ls("Request image from DALL-E"))
+@app_commands.describe(prompt=ls("Image prompt"), resolution=ls("Resolution, X*X pixels"))
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolutions) -> None:
     '''Request image from OpenAI DALL-E'''
+
     if ctx.channel_id not in allowed_channel:
         return
+
     view = DView()
     log.info(
         f'DALL-E image requested by {ctx.user} in {ctx.channel} {ctx.channel_id}: {prompt}')
@@ -174,13 +173,13 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolution
 
 
 @bot.tree.command(name="sdimage",
-                  description="Request image from Stable Diffusion. (may not be available)")
-@app_commands.describe(prompt="generation prompt",
-                       height="Vertical resolution, pixels",
-                       width="Horizontal resolution, pixels",
-                       lora1="First Lora",
-                       lora2="Second Lora",
-                       negative="Negative prompt")
+                  description=ls("Request image from Stable Diffusion (may not be available)"))
+@app_commands.describe(prompt=ls("Image prompt"),
+                       height=ls("Vertical resolution, pixels"),
+                       width=ls("Horizontal resolution, pixels"),
+                       lora1=ls("First LoRa"),
+                       lora2=ls("Second LoRa"),
+                       negative=ls("Negative prompt"))
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdimage(ctx: discord.Interaction,
@@ -189,10 +188,11 @@ async def sdimage(ctx: discord.Interaction,
                   width:  SD.resolutions,
                   lora1: Optional[SD.loralist],
                   lora2: Optional[SD.loralist],
-                  negative_prompt: Optional[str]) -> None:
-    '''Request image from Stable Diffusion.'''
+                  negative: Optional[str]) -> None:
+
     if ctx.channel_id not in allowed_channel:
         return
+
     sfw = check_sfw(ctx.channel_id)
     prompt_f = SD.cleanprompt(prompt, sfw) + \
         str(lora1 or '') + str(lora2 or '')
@@ -201,7 +201,7 @@ async def sdimage(ctx: discord.Interaction,
     await ctx.response.defer()
     view = DView()
     if await SD.checksd():
-        files = await SD.txt2img(prompt_f, int(height), int(width), str(negative_prompt or ''), sfw)
+        files = await SD.txt2img(prompt_f, int(height), int(width), str(negative or ''), sfw)
         log.info(f'SD image saved: {", ".join(files)}')
         view.msg = await ctx.followup.send(content=f"**PROMPT**: *{prompt_f}*", files=[discord.File(file) for file in files], view=view)
     else:
@@ -210,14 +210,15 @@ async def sdimage(ctx: discord.Interaction,
         return
 
 
-@bot.tree.command(name="sd-img2img",
-                  description="Request image from Stable Diffusion. (may not be available)")
-@app_commands.describe(prompt="generation prompt",
-                       negative_prompt="Negative prompt",
-                       height="Vertical resolution, pixels",
-                       width="Horizontal resolution, pixels",
-                       denoising="Denoising value 0 - 1 with 0.05 increments",
-                       image_url="URL for img2img image")
+@bot.tree.command(name="img2img",
+                  description="Request image from Stable Diffusion (may not be available)")
+@app_commands.describe(prompt=ls("Image prompt"),
+                       negative_prompt=ls("Negative prompt"),
+                       height=ls("Vertical resolution, pixels"),
+                       width=ls("Horizontal resolution, pixels"),
+                       denoising=ls(
+                           "Denoising value 0 - 1 with 0.05 increments"),
+                       image_url=ls("URL for img2img image"))
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def sdimg2img(ctx: discord.Interaction,
@@ -228,8 +229,10 @@ async def sdimg2img(ctx: discord.Interaction,
                     denoising: float,
                     image_url: str) -> None:
     '''Request an image-to-image generation from Stable Diffusion.'''
+
     if ctx.channel_id not in allowed_channel:
         return
+
     view = DView()
     log.info(
         f'SD i2i image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}')
@@ -256,51 +259,38 @@ async def sdimg2img(ctx: discord.Interaction,
         await ctx.followup.send(str(e))
 
 
-@bot.command()
-async def chat(ctx: commands.Context, *, prompt) -> None:
-    ''' Request chat completion from OpenAI ChatGPT'''
+@bot.tree.command(name="chat", description=ls("Request chat completion from OpenAI ChatGPT"))
+@app_commands.describe(text=ls("Your message to ChatGPT"))
+@app_commands.guilds(*guilds_ids)
+@app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
+async def chat(ctx: discord.Interaction, text: str) -> None:
+    '''Request chat completion from OpenAI ChatGPT'''
 
-    if ctx.channel.id not in allowed_channel:
+    if ctx.channel_id not in allowed_channel:
         return
 
-    log.info(f'{ctx.author} asked in {ctx.channel} {ctx.channel.id}: {prompt}')
-
-    async with ctx.typing():
-        replied = False
-        text = await cgpt.chat_completion(prompt, ctx.channel.id)
-        out = ""
-        for line in text.splitlines():
-            if len(out) + len(line) < 1997:
-                out += line + "\n"
-            elif not replied:
-                await ctx.reply(content=out)
-                replied = True
-                out = ""
-            else:
-                await ctx.send(content=out)
-                out = ""
-        if len(out) > 0 and not replied:
-            await ctx.reply(content=out)
-        elif len(out) > 0:
-            await ctx.send(content=out)
-    log.info(f'ChatGPT reply in {ctx.channel} {ctx.channel.id} : {text}')
+    log.info(f'{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}')
+    await ctx.response.defer()
+    replied = await cgpt.chat_completion(text, ctx.channel_id)
+    await ctx.followup.send(content=replied)
+    log.info(f'ChatGPT reply in {ctx.channel} {ctx.channel_id} : {text}')
 
 
-@bot.event
-async def on_message(message: discord.Message) -> None:
-    if message.channel.id not in allowed_channel:
-        return
+# @bot.event
+# async def on_message(message: discord.Message) -> None:
+#     if message.channel.id not in allowed_channel:
+#         return
 
-    if message.reference and isinstance((r := message.reference.resolved), discord.Message) and r.author == bot.user and message.author != bot.user:
+#     if message.reference and isinstance((r := message.reference.resolved), discord.Message) and r.author == bot.user and message.author != bot.user:
 
-        ctx = await bot.get_context(message)
-        if ((command := bot.get_command('chat')) is None
-                and not isinstance(command, commands.Command)):
-            return
-        async with message.channel.typing():
-            await ctx.invoke(command, prompt=message.content)  # type: ignore
-        return
-    await bot.process_commands(message)
+#         ctx = await bot.get_context(message)
+#         if ((command := bot.get_command('chat')) is None
+#                 and not isinstance(command, commands.Command)):
+#             return
+#         async with message.channel.typing():
+#             await ctx.invoke(command, prompt=message.content)  # type: ignore
+#         return
+#     await bot.process_commands(message)
 
 
 @bot.event
@@ -325,7 +315,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
 @bot.command(hidden=True)
 async def synchronise(ctx: commands.Context) -> None:
     if (ctx.author.id not in users_allowed_to_sync
-            or ctx.guild is None
+        or ctx.guild is None
             ):
         return
     print(f"sync requested in {ctx.guild}")

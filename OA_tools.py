@@ -34,7 +34,7 @@ class ChatGPT():
         except Exception as e:
             print(e.__class__.__name__, e)
             text = "exception"
-            return text
+            return text[:2000]
 
     async def generate_image(self, prompt: str, resolution) -> str:
         if self.oaitoken is None:
