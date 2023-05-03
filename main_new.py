@@ -77,8 +77,9 @@ class EnvelopeButton(Button):
 
 
 class CrossButton(Button):
-    def __init__(self) -> None:
+    def __init__(self, sview) -> None:
         super().__init__(emoji="🗑️")
+        self.sview = sview
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -86,6 +87,7 @@ class CrossButton(Button):
                 or interaction.message.interaction.user.id != interaction.user.id  # type: ignore
                 ):
             return
+        self.sview.stop()
         await del_msg(interaction.message, interaction.user)
 
 
@@ -94,9 +96,9 @@ class DView(View):
         self.msg = None
         super().__init__(timeout=timeout)
         self.add_item(EnvelopeButton())
-        self.add_item(CrossButton())
+        self.add_item(CrossButton(self))
 
-    async def on_timeout(self):
+    async def on_timeout(self) -> None:
         self.clear_items()
         self.add_item(
             Button(label="Please use reactions ✉️ 🗑️", disabled=True))
