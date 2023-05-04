@@ -21,11 +21,19 @@ filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
 loralist = Literal[' <lora:anime_screencap_v2-000030:1>',
                    ' <lora:animeoutlineV4_16:1>',
                    ' <lora:helltaker:0.7>',
+                   ' <lora:arknightsSAGA_v10:0.7>',
                    ' <lora:hutao:0.7>',
-                   ' <lora:thickline_fp16:1>'
+                   ' <lora:thickline_fp16:1>',
+                   ' <lora:aronaBlueArchive_v1:1>',
+                   ' <lora:gigachadDiffusionLora_v69:1>',
+                   ' <lora:uwu:1>',
+                   ' <lora:tatsumakiOnePunchMan_v11:1>',
+                   ' <lora:roxyMigurdiaLora_offset:1>',
+                   ' <lora:pastelMixStylizedAnime_pastelMixLoraVersion:1>',
+                   ' <lora:miyu2:1>'
                 ]
 
-resolutions = Literal["448", "512", "640", "704", "768"]
+resolutions = Literal["448", "512", "640", "704", "768", "832", "896"]
 
 upscalers = Literal["R-ESRGAN 4x+ Anime6B",
                     "4x_foolhardy_Remacri"]
