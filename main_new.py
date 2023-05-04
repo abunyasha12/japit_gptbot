@@ -305,8 +305,8 @@ async def upscale(ctx: discord.Interaction, image_url: str, factor: Optional[flo
         image_f = await SD.upscale(image_url, factor, upscaler)
         await ctx.followup.send(file=discord.File(image_f))
     except Exception as e:
-        log.warning(str(e))
-        await ctx.followup.send(str(e))
+        log.warning(e.__class__.__name__)
+        await ctx.followup.send(e.__class__.__name__)
 
     pass
 
