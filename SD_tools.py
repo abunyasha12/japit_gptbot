@@ -45,7 +45,7 @@ client = httpx.AsyncClient()
 
 def cleanprompt(prompt: str, sfw: bool = True) -> str:
     pl = []
-    for i in prompt.lower().split(sep=','):
+    for i in prompt.split(sep=','):
         if i != '':
             pl.append(i.strip())
     print(len(pl))
