@@ -36,6 +36,6 @@ lora1,lora1
 lora2,lora2
 text,текст
 factor,кратность
-Upscale factor,Кратность апскейла
+Upscale factor 1x-4x,Кратность апскейла от 1 до 4
 upscaler,апскейлер
 Upscaler,Апскейлер

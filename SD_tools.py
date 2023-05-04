@@ -21,10 +21,10 @@ filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
 loralist = Literal[' <lora:anime_screencap_v2-000030:1>',
                    ' <lora:animeoutlineV4_16:1>',
                    ' <lora:helltaker:0.7>',
-                   ' <lora:arknightsSAGA_v10:0.7>',
+                   ' <lora:arknightssaga_v10:0.7>',
                    ' <lora:hutao:0.7>',
                    ' <lora:thickline_fp16:1>',
-                   ' <lora:aronaBlueArchive_v1:1>',
+                   ' <lora:aronabluearchive_v1:1>',
                    ' <lora:gigachadDiffusionLora_v69:1>',
                    ' <lora:uwu:1>',
                    ' <lora:tatsumakiOnePunchMan_v11:1>',
@@ -50,9 +50,9 @@ def cleanprompt(prompt: str, sfw: bool = True) -> str:
             pl.append(i.strip())
     print(len(pl))
     if sfw:
-        for word in filterwords:
+        for fl_word in filterwords:
             for pl_wrd in list(pl):
-                if word in pl_wrd:
+                if fl_word in str(pl_wrd).lower():
                     pl.remove(pl_wrd)
         filtered = ", ".join(pl)
     else:
