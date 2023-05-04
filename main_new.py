@@ -287,7 +287,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
 @bot.tree.command(name="upscale", description="Request upscale")
 @app_commands.describe(image_url="Image URL", factor="Upscale factor", upscaler="Upscaler")
 @app_commands.guilds(*guilds_ids)
-# @app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
+@app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
 async def upscale(ctx: discord.Interaction, image_url: str, factor: Optional[float], upscaler: Optional[SD.upscalers]) -> None:
 
     # if ctx.channel_id not in allowed_channel:
@@ -356,6 +356,7 @@ async def synchronise(ctx: commands.Context) -> None:
         ):
         return
     print(f"sync requested in {ctx.guild}")
+    await ctx.defer()
     bot.tree.copy_global_to(guild=ctx.guild)
     comms = await bot.tree.sync(guild=ctx.guild)
     await ctx.reply(f"SYNCED {comms}", ephemeral=True)
