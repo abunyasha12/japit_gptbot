@@ -37,10 +37,10 @@ DISCORD_TOKEN = os.environ.get('DISCORD_TOKEN')
 OPENAI_TOKEN = os.environ.get('OPENAI_TOKEN')
 DEEPL_TOKEN = os.environ.get('DEEPL_TOKEN')
 
-allowed_channel = [1093166962428882996,  # japit.gpt
-                   1093529718277541958,  # japit.gpt_adult
-                   831502411411095562  # pg.general
-                   ]
+# allowed_channel = [1093166962428882996,  # japit.gpt
+#                    1093529718277541958,  # japit.gpt_adult
+#                    831502411411095562  # pg.general
+#                    ]
 
 guilds_ids = [208894633432973314,  # proving grounds
               340723151967092746,  # pizdec
@@ -151,14 +151,14 @@ async def on_ready() -> None:
 
 
 @bot.tree.command(name="image", description=ls("Request image from DALL-E"))
-@app_commands.describe(prompt=ls("Image prompt"), resolution=ls("Resolution, X*X pixels"))
+@app_commands.describe(prompt=ls("Image prompt"), resolution=ls("Resolution X*X pixels"))
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolutions) -> None:
     '''Request image from OpenAI DALL-E'''
 
-    if ctx.channel_id not in allowed_channel:
-        return
+    # if ctx.channel_id not in allowed_channel:
+    #     return
 
     view = DView()
     log.info(
@@ -178,8 +178,8 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolution
 @bot.tree.command(name="sdimage",
                   description=ls("Request image from Stable Diffusion (may not be available)"))
 @app_commands.describe(prompt=ls("Image prompt"),
-                       height=ls("Vertical resolution, pixels"),
-                       width=ls("Horizontal resolution, pixels"),
+                       height=ls("Vertical resolution in pixels"),
+                       width=ls("Horizontal resolution in pixels"),
                        lora1=ls("First LoRa"),
                        lora2=ls("Second LoRa"),
                        negative=ls("Negative prompt"))
@@ -193,20 +193,24 @@ async def sdimage(ctx: discord.Interaction,
                   lora2: Optional[SD.loralist],
                   negative: Optional[str]) -> None:
 
-    if ctx.channel_id not in allowed_channel:
-        return
+    # if ctx.channel_id not in allowed_channel:
+    #     return
 
+    await ctx.response.defer()
     sfw = check_sfw(ctx.channel_id)
     prompt_f = SD.cleanprompt(prompt, sfw) + \
         str(lora1 or '') + str(lora2 or '')
     log.info(
         f'SD image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt_f}')
-    await ctx.response.defer()
     view = DView()
     if await SD.checksd():
-        files = await SD.txt2img(prompt_f, int(height), int(width), str(negative or ''), sfw)
-        log.info(f'SD image saved: {", ".join(files)}')
-        view.msg = await ctx.followup.send(content=f"**PROMPT**: *{prompt_f}*", files=[discord.File(file) for file in files], view=view)
+        try:
+            files = await SD.txt2img(prompt_f, int(height), int(width), str(negative or ''), sfw)
+            log.info(f'SD image saved: {", ".join(files)}')
+            view.msg = await ctx.followup.send(content=f"**PROMPT**: *{prompt_f}*", files=[discord.File(file) for file in files], view=view)
+        except Exception as e:
+            log.warning(str(e))
+            await ctx.followup.send(str(e))
     else:
         await ctx.followup.send('SD offline! Try DALL-E **/image** instead.')
         log.warning("SD unavailable!")
@@ -217,8 +221,8 @@ async def sdimage(ctx: discord.Interaction,
                   description="Request image from Stable Diffusion (may not be available)")
 @app_commands.describe(prompt=ls("Image prompt"),
                        negative=ls("Negative prompt"),
-                       height=ls("Vertical resolution, pixels"),
-                       width=ls("Horizontal resolution, pixels"),
+                       height=ls("Vertical resolution in pixels"),
+                       width=ls("Horizontal resolution in pixels"),
                        denoising=ls(
                            "Denoising value 0 - 1 with 0.05 increments"),
                        image_url=ls("URL for img2img image"))
@@ -233,8 +237,8 @@ async def sdimg2img(ctx: discord.Interaction,
                     image_url: str) -> None:
     '''Request an image-to-image generation from Stable Diffusion.'''
 
-    if ctx.channel_id not in allowed_channel:
-        return
+    # if ctx.channel_id not in allowed_channel:
+    #     return
 
     view = DView()
     log.info(
@@ -269,15 +273,42 @@ async def sdimg2img(ctx: discord.Interaction,
 async def chat(ctx: discord.Interaction, text: str) -> None:
     '''Request chat completion from OpenAI ChatGPT'''
 
-    if ctx.channel_id not in allowed_channel:
-        return
+    # if ctx.channel_id not in allowed_channel:
+    #     return
 
     text = text[:200]
     log.info(f'{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}')
     await ctx.response.defer()
-    replied = await cgpt.chat_completion(text, ctx.channel_id)
+    replied = await cgpt.chat_completion(text, ctx.channel_id)  # type: ignore
     await ctx.followup.send(content=f'**{ctx.user}**: {text} \n**{bot.user}**: {replied}')
     log.info(f'ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}')
+
+
+@bot.tree.command(name="upscale", description="Request upscale")
+@app_commands.describe(image_url="Image URL", factor="Upscale factor", upscaler="Upscaler")
+@app_commands.guilds(*guilds_ids)
+# @app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
+async def upscale(ctx: discord.Interaction, image_url: str, factor: Optional[float], upscaler: Optional[SD.upscalers]) -> None:
+
+    # if ctx.channel_id not in allowed_channel:
+    #     return
+
+    if factor is None:
+        factor = 2
+    if upscaler is None:
+        upscaler = "R-ESRGAN 4x+ Anime6B"
+
+    log.info(
+        f'Upscale requested by {ctx.user} in {ctx.channel} {ctx.channel_id}')
+    await ctx.response.defer()
+    try:
+        image_f = await SD.upscale(image_url, factor, upscaler)
+        await ctx.followup.send(file=discord.File(image_f))
+    except Exception as e:
+        log.warning(str(e))
+        await ctx.followup.send(str(e))
+
+    pass
 
 
 # @bot.event
@@ -300,8 +331,9 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     if (
-        payload.channel_id not in allowed_channel
-        or not isinstance(ch := bot.get_channel(payload.channel_id), discord.TextChannel)
+        # payload.channel_id not in allowed_channel
+        not isinstance(ch := bot.get_channel(
+            payload.channel_id), discord.TextChannel)
         or (msg := await ch.fetch_message(payload.message_id)).author != bot.user
         or (usr := bot.get_user(payload.user_id)) is None
     ):

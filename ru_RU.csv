@@ -1,0 +1,41 @@
+original,ru_RU
+# Названия команд
+chat,чат
+image,image
+sdimage,sdimage
+img2img,img2img
+synchronise,synchronise
+text,текст
+upscale,upscale
+# Описания команд
+Request image from Stable Diffusion (may not be available),Запросить изображение через Stable Diffusion (может быть недоступно)
+Request chat completion from OpenAI ChatGPT,Запросить ответ от OpenAI ChatGPT
+Request image from DALL-E,Запросить изображение от DALL-E
+sync commands,синхронизировать команды
+Request upscale,Запросить апскейл
+Image prompt,Промпт для изображения
+Negative prompt,Негативный промпт
+Resolution X*X pixels,Разрешение X*X пикселей
+Vertical resolution in pixels,Вертикальное разрешение в пикселях
+Horizontal resolution in pixels,Горизонтальное разрешение в пикселях
+First LoRa,Первая LoRa
+Second LoRa,Вторая LoRa
+URL for img2img image,Ссылка на изображение для img2img
+Denoising value 0 - 1 with 0.05 increments,Значение denoising от 0 до 1 с шагом 0.05
+Your message to ChatGPT,Запрос для ChatGPT
+Image URL,Ссылка на картинку
+# Параметры команд
+prompt,промпт
+resolution,разрешение
+height,высота
+width,ширина
+negative,негатив
+denoising,denoising
+image_url,ссылка_на_картинку
+lora1,lora1
+lora2,lora2
+text,текст
+factor,кратность
+Upscale factor,Кратность апскейла
+upscaler,апскейлер
+Upscaler,Апскейлер

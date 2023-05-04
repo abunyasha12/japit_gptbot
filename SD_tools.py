@@ -27,6 +27,9 @@ loralist = Literal[' <lora:anime_screencap_v2-000030:1>',
 
 resolutions = Literal["448", "512", "640", "704", "768"]
 
+upscalers = Literal["R-ESRGAN 4x+ Anime6B",
+                    "4x_foolhardy_Remacri"]
+
 base_negative = "blurry, EasyNegative, badhandv4"
 
 client = httpx.AsyncClient()
@@ -88,7 +91,7 @@ async def image_from_url_to_b64str(image_url) -> str:
         resp = await client.get(image_url, timeout=30)
         if resp.status_code != 200:
             raise ImgNotFound
-        if len(resp.content) > 1000000:
+        if len(resp.content) > 500000:
             raise ImgTooLarge
         im2im = base64.b64encode(resp.content).decode()
         return im2im
@@ -204,3 +207,28 @@ async def img2img(prompt: str,
         image.save(f'images_sd/{genname}_{ind}.png')
         filenames.append(f'images_sd/{genname}_{ind}.png')
     return filenames
+
+
+async def upscale(image_url: str, scale_factor: float, upscaler: str):
+
+    genname = f"{dt_os()}_image"
+    im_b64 = await image_from_url_to_b64str(image_url)
+
+    scale_factor = max(min(scale_factor, 4), 1)
+    print(scale_factor)
+    gen_param = {
+        "resize_mode": 0,
+        "upscaling_resize": scale_factor,
+        "upscaler_1": upscaler,
+        "image": im_b64
+    }
+    try:
+        response = await client.post(url=f"{SD_API_URL}/sdapi/v1/extra-single-image", json=gen_param, timeout=30)
+    except httpx.ConnectTimeout:
+        raise SDTimeout
+    except Exception:
+        raise
+    response = response.json()
+    Image.open(io.BytesIO(base64.b64decode(response['image']))).save(
+        f'extras/{genname}.png')
+    return f'extras/{genname}.png'
