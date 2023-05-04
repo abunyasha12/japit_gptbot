@@ -91,7 +91,7 @@ async def image_from_url_to_b64str(image_url) -> str:
         resp = await client.get(image_url, timeout=30)
         if resp.status_code != 200:
             raise ImgNotFound
-        if len(resp.content) > 500000:
+        if len(resp.content) > 1000000:
             raise ImgTooLarge
         im2im = base64.b64encode(resp.content).decode()
         return im2im
