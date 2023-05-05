@@ -5,5 +5,4 @@
 *.pyc
 pyproject.toml
 logs/logfile.log.2023-05-01
-api.py
 test.py
