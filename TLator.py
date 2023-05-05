@@ -9,14 +9,18 @@ import pandas
 class MyTranslator(app_commands.Translator):
     def __init__(self):
         self.df = pandas.read_csv("ru_RU.csv")
-    async def translate(self,
-                        string: app_commands.locale_str,
-                        locale: discord.Locale,
-                        context: app_commands.TranslationContext) -> str | None:
+
+    async def translate(
+        self,
+        string: app_commands.locale_str,
+        locale: discord.Locale,
+        context: app_commands.TranslationContext,
+    ) -> str | None:
         text = str(string)
         loc = context.location
         if (
-            loc == CL.choice_name
+            loc
+            == CL.choice_name
             # or loc == CL.parameter_name
             # or loc == CL.command_name
         ):
@@ -27,8 +31,7 @@ class MyTranslator(app_commands.Translator):
                 tlation = str(self.df.at[idx, "ru_RU"])
                 return tlation
             except IndexError:
-                print(
-                    f"COULD NOT TRANSLATE TO RUSSIAN: '{text}' NOT FOUND IN ru_RU.csv")
+                print(f"COULD NOT TRANSLATE TO RUSSIAN: '{text}' NOT FOUND IN ru_RU.csv")
                 return text
         else:
             return text

@@ -4,60 +4,52 @@ from PIL import Image, PngImagePlugin
 import base64
 import io
 from typing import Literal
+import discord
 
 SD_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
 }
 
-SD_API_URL = 'http://192.168.0.103:7860'
+SD_API_URL = "http://192.168.0.103:7860"
 
-filterwords = ["nude", "nsfw", "naked", "pussy", "nipples",
-               "bare skin", "fucking", "stripped",
-               "bare-skinned",
-               "topless"
-            ]
+filter_words = [
+    "nude",
+    "nsfw",
+    "naked",
+    "pussy",
+    "nipples",
+    "bare skin",
+    "fucking",
+    "stripped",
+    "bare-skinned",
+    "topless",
+]
 
-loralist = Literal[' <lora:anime_screencap_v2-000030:1>',
-                   ' <lora:animeoutlineV4_16:1>',
-                   ' <lora:helltaker:0.7>',
-                   ' <lora:arknightssaga_v10:0.7>',
-                   ' <lora:hutao:0.7>',
-                   ' <lora:thickline_fp16:1>',
-                   ' <lora:aronabluearchive_v1:1>',
-                   ' <lora:gigachadDiffusionLora_v69:1>',
-                   ' <lora:uwu:1>',
-                   ' <lora:tatsumakiOnePunchMan_v11:1>',
-                   ' <lora:roxyMigurdiaLora_offset:1>',
-                   ' <lora:pastelMixStylizedAnime_pastelMixLoraVersion:1>',
-                   ' <lora:miyu2:1>'
-                ]
+LORALIST: list[discord.app_commands.Choice] = []
+
+with open("sdconfig.csv") as lora_file:
+    LORALIST.extend(discord.app_commands.Choice(name=line.rstrip("\n"), value=line.rstrip("\n")) for line in lora_file.readlines())
+
 
 resolutions = Literal["448", "512", "640", "704", "768", "832", "896"]
 
-upscalers = Literal["R-ESRGAN 4x+ Anime6B",
-                    "4x_foolhardy_Remacri"]
+upscalers = Literal["R-ESRGAN 4x+ Anime6B", "4x_foolhardy_Remacri"]
 
 base_negative = "blurry, EasyNegative, badhandv4"
 
 client = httpx.AsyncClient()
 
 
-def cleanprompt(prompt: str, sfw: bool = True) -> str:
-    pl = []
-    for i in prompt.split(sep=','):
-        if i != '':
-            pl.append(i.strip())
-    print(len(pl))
-    if sfw:
-        for fl_word in filterwords:
-            for pl_wrd in list(pl):
-                if fl_word in str(pl_wrd).lower():
-                    pl.remove(pl_wrd)
-        filtered = ", ".join(pl)
-    else:
-        filtered = ", ".join(pl)
-    return filtered
+def clean_prompt(prompt: str, sfw: bool = True) -> str:
+    return ", ".join(w for _w in prompt.split(",") if (w := _w.strip().lower()) and w not in filter_words)
+
+
+def refresh_loras() -> None:
+    """Refreshes list of LoRas"""
+    LORALIST.clear()
+    with open("sdconfig.csv") as lora_file:
+        LORALIST.extend(discord.app_commands.Choice(name=line.rstrip("\n"), value=line.rstrip("\n")) for line in lora_file.readlines())
 
 
 def dt_os() -> str:
@@ -84,7 +76,7 @@ class SDTimeout(Exception):
 
 async def checksd() -> bool:
     try:
-        resp = await client.get(url=f'{SD_API_URL}/', timeout=3)
+        resp = await client.get(url=f"{SD_API_URL}/", timeout=3)
         if resp.status_code == 200:
             return True
         else:
@@ -112,12 +104,8 @@ async def image_from_url_to_b64str(image_url) -> str:
         raise
 
 
-async def txt2img(prompt: str,
-                  height: int,
-                  width: int,
-                  negative: str,
-                  sfw: bool = True) -> list[str]:
-    if negative == '':
+async def txt2img(prompt: str, height: int, width: int, negative: str, sfw: bool = True) -> list[str]:
+    if negative == "":
         negative = base_negative
     if sfw:
         neg = negative + ", nude, pussy, nipples"
@@ -137,37 +125,35 @@ async def txt2img(prompt: str,
         "steps": 21,
         "width": width,
         "height": height,
-        "negative_prompt": neg
+        "negative_prompt": neg,
     }
-    print(f'prompt: {prompt} \nnegative prompt: {neg}')
+    print(f"prompt: {prompt} \nnegative prompt: {neg}")
     try:
-        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/txt2img', json=gen_param, timeout=30)
+        response = await client.post(url=f"{SD_API_URL}/sdapi/v1/txt2img", json=gen_param, timeout=30)
     except httpx.ConnectTimeout:
         raise SDTimeout
     r = response.json()
-    for ind, img in enumerate(r['images']):
+    for ind, img in enumerate(r["images"]):
         image = Image.open(io.BytesIO(base64.b64decode(img)))
-        png_payload = {
-            "image": "data:image/png;base64," + img
-        }
-        response2 = await client.post(
-            url=f'{SD_API_URL}/sdapi/v1/png-info', json=png_payload)
+        png_payload = {"image": "data:image/png;base64," + img}
+        response2 = await client.post(url=f"{SD_API_URL}/sdapi/v1/png-info", json=png_payload)
         pnginfo = PngImagePlugin.PngInfo()
         pnginfo.add_text("parameters", response2.json().get("info"))
-        image.save(f'images_sd/{genname}_{ind}.png')
-        filenames.append(f'images_sd/{genname}_{ind}.png')
+        image.save(f"images_sd/{genname}_{ind}.png")
+        filenames.append(f"images_sd/{genname}_{ind}.png")
     return filenames
 
 
-async def img2img(prompt: str,
-                  vert: int,
-                  hor: int,
-                  denoising: float,
-                  im2im_url: str,
-                  negative: str,
-                  sfw: bool = True
-                  ) -> list[str]:
-    if negative == '':
+async def img2img(
+    prompt: str,
+    vert: int,
+    hor: int,
+    denoising: float,
+    im2im_url: str,
+    negative: str,
+    sfw: bool = True,
+) -> list[str]:
+    if negative == "":
         negative = base_negative
     if sfw:
         neg = negative + ", nude, pussy, nipples"
@@ -194,31 +180,27 @@ async def img2img(prompt: str,
         "steps": 21,
         "width": hor,
         "height": vert,
-        "negative_prompt": neg
+        "negative_prompt": neg,
     }
     try:
-        response = await client.post(url=f'{SD_API_URL}/sdapi/v1/img2img', json=gen_param, timeout=30)
+        response = await client.post(url=f"{SD_API_URL}/sdapi/v1/img2img", json=gen_param, timeout=30)
     except httpx.ConnectTimeout:
         raise SDTimeout
-    for ind, img in enumerate(response.json()['images']):
+    for ind, img in enumerate(response.json()["images"]):
         try:
             image = Image.open(io.BytesIO(base64.b64decode(img)))
         except:
             raise
-        png_payload = {
-            "image": "data:image/png;base64," + img
-        }
-        response2 = await client.post(
-            url=f'{SD_API_URL}/sdapi/v1/png-info', json=png_payload)
+        png_payload = {"image": "data:image/png;base64," + img}
+        response2 = await client.post(url=f"{SD_API_URL}/sdapi/v1/png-info", json=png_payload)
         pnginfo = PngImagePlugin.PngInfo()
         pnginfo.add_text("parameters", response2.json().get("info"))
-        image.save(f'images_sd/{genname}_{ind}.png')
-        filenames.append(f'images_sd/{genname}_{ind}.png')
+        image.save(f"images_sd/{genname}_{ind}.png")
+        filenames.append(f"images_sd/{genname}_{ind}.png")
     return filenames
 
 
 async def upscale(image_url: str, scale_factor: float, upscaler: str):
-
     genname = f"{dt_os()}_image"
     im_b64 = await image_from_url_to_b64str(image_url)
 
@@ -228,7 +210,7 @@ async def upscale(image_url: str, scale_factor: float, upscaler: str):
         "resize_mode": 0,
         "upscaling_resize": scale_factor,
         "upscaler_1": upscaler,
-        "image": im_b64
+        "image": im_b64,
     }
     try:
         response = await client.post(url=f"{SD_API_URL}/sdapi/v1/extra-single-image", json=gen_param, timeout=30)
@@ -237,6 +219,5 @@ async def upscale(image_url: str, scale_factor: float, upscaler: str):
     except Exception:
         raise
     response = response.json()
-    Image.open(io.BytesIO(base64.b64decode(response['image']))).save(
-        f'extras/{genname}.png')
-    return f'extras/{genname}.png'
+    Image.open(io.BytesIO(base64.b64decode(response["image"]))).save(f"extras/{genname}.png")
+    return f"extras/{genname}.png"
