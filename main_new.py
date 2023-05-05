@@ -136,7 +136,6 @@ async def del_msg(msg: discord.Message, requester: discord.User | discord.Member
 
 async def lora_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     *other, current = current.strip().lower().split() or [""]
-    print(repr(current), other, bool(other))
     if not current and not other:
         return SD.LORALIST[:25]
     # elif not current:
@@ -195,15 +194,12 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolution
     name="sdimage",
     description=ls("Request image from Stable Diffusion (may not be available)"),
 )
-@app_commands.autocomplete(
-    loras=lora_autocomplete
-    # lora2=lora_autocomplete
-)
+@app_commands.autocomplete(loras=lora_autocomplete)
 @app_commands.describe(
     prompt=ls("Image prompt"),
     height=ls("Vertical resolution in pixels"),
     width=ls("Horizontal resolution in pixels"),
-    loras=ls("ЛоРы"),
+    loras=ls("LoRas"),
     negative=ls("Negative prompt"),
 )
 @app_commands.guilds(*guilds_ids)
