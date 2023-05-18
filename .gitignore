@@ -6,3 +6,6 @@
 pyproject.toml
 logs/logfile.log.2023-05-01
 test.py
+test.txt
+logs/logfile.log.2023-05-06
+chats/831502411411095562.json

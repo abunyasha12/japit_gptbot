@@ -297,14 +297,15 @@ async def sdimg2img(
 @bot.tree.command(name="chat", description=ls("Request chat completion from OpenAI ChatGPT"))
 @app_commands.describe(text=ls("Your message to ChatGPT"))
 @app_commands.guilds(*guilds_ids)
-@app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
+# @app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
 async def chat(ctx: discord.Interaction, text: str) -> None:
     """Request chat completion from OpenAI ChatGPT"""
 
     text = text[:200]
     log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}")
     await ctx.response.defer()
-    replied = await cgpt.chat_completion(text, ctx.channel_id)  # type: ignore
+    replied = await cgpt.chat_completion(text, str(ctx.channel_id))
+    print("GOT COMPLETION")
     await ctx.followup.send(content=f"**{ctx.user}**: {text} \n**{bot.user}**: {replied}")
     log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
 
@@ -372,5 +373,4 @@ if __name__ == "__main__" and DISCORD_TOKEN is not None:
     import subprocess
 
     subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859"])
-    print("test")
     bot.run(DISCORD_TOKEN)
