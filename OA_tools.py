@@ -20,21 +20,21 @@ class ChatGPT:
     def __init__(self, oaitoken) -> None:
         self.oaitoken = oaitoken
         self.conversations = {}
-        for item in os.listdir(".\\chats\\"):
-            with open(f".\\chats\\{item}", encoding="utf-8") as file:
+        for item in os.listdir("./chats/"):
+            with open(f"./chats/{item}", encoding="utf-8") as file:
                 self.conversations.update({item.replace(".json", ""): json.load(file)})
 
     def add_to_conversation(self, convo_id: str, author: str, text: str) -> None:
         text_dict = {"role": author, "content": text}
 
-        if not os.path.isfile(path=f".\\chats\\{convo_id}.json"):  # проверяет json с историей сообщений для конкретного канала. если его нет, создает и грузит в память
-            with open(f".\\chats\\{convo_id}.json", "w", encoding="utf-8") as file:
+        if not os.path.isfile(path=f"./chats/{convo_id}.json"):  # проверяет json с историей сообщений для конкретного канала. если его нет, создает и грузит в память
+            with open(f"./chats/{convo_id}.json", "w", encoding="utf-8") as file:
                 json.dump(obj={"messages": [{"role": "system", "content": SYSTEM_PROMPT}]}, fp=file, indent=4, ensure_ascii=False)
-            with open(f".\\chats\\{convo_id}.json", "r", encoding="utf-8") as file:
+            with open(f"./chats/{convo_id}.json", "r", encoding="utf-8") as file:
                 self.conversations.update({convo_id: json.load(file)})
 
         self.conversations[convo_id]["messages"].append(text_dict)
-        with open(f".\\chats\\{convo_id}.json", "w", encoding="utf-8") as file:
+        with open(f"./chats/{convo_id}.json", "w", encoding="utf-8") as file:
             json.dump(self.conversations[convo_id], file, indent=4, ensure_ascii=False)
 
     async def chat_completion(self, prompt: str, convo_id="1093166962428882996") -> str:
