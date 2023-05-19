@@ -297,16 +297,26 @@ async def sdimg2img(
 @bot.tree.command(name="chat", description=ls("Request chat completion from OpenAI ChatGPT"))
 @app_commands.describe(text=ls("Your message to ChatGPT"))
 @app_commands.guilds(*guilds_ids)
-# @app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
+@app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
 async def chat(ctx: discord.Interaction, text: str) -> None:
     """Request chat completion from OpenAI ChatGPT"""
 
     text = text[:200]
+    i = 1
     log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}")
     await ctx.response.defer()
     replied = await cgpt.chat_completion(text, str(ctx.channel_id))
-    print("GOT COMPLETION")
-    await ctx.followup.send(content=f"**{ctx.user}**: {text} \n**{bot.user}**: {replied}")
+    # print(f"REPLY LENGTH: {len(replied)}")
+    if len(replied) + len(text) < 1900:
+        # print("OK. SHORT ENOUGH")
+        await ctx.followup.send(content=f"**{ctx.user}**: {text} \n**{bot.user}**: {replied}")
+    else:
+        # print("TOO LONG. TRYING TO SPLIT")
+        await ctx.followup.send(content=f"**{ctx.user}**: {text} \n**{bot.user}**: {replied[:1500]}")
+        # print(replied[1500 * i: 1500 * (i + 1)])
+        while i <= len(replied) / 1500:
+            await ctx.channel.send(replied[1500 * i : 1500 * (i + 1)])  # type: ignore
+            i += 1
     log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
 
 

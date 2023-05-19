@@ -44,7 +44,7 @@ class ChatGPT:
         try:
             text = await openai.ChatCompletion.acreate(model="gpt-3.5-turbo", messages=messages)
             self.add_to_conversation(convo_id, "assistant", text.choices[0].message["content"])  # type: ignore
-            return str(text.choices[0].message["content"])[:1800]  # type: ignore
+            return str(text.choices[0].message["content"])  # type: ignore
         except Exception as e:
             return f"{e.__class__.__name__} {e}"
 
