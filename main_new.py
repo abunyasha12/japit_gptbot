@@ -1,10 +1,8 @@
 import discord
-import os
 from discord.ext import commands
 from discord.ui import View, Button
 from discord import app_commands
 from discord.app_commands import locale_str as ls
-from dotenv import load_dotenv
 import logging
 import logging.handlers
 import OA_tools as OA
@@ -14,6 +12,9 @@ from cdifflib import CSequenceMatcher
 from itertools import islice
 import re
 from typing import Generator
+from models.openai import ConversationLog
+from starlette.config import Config
+from starlette.datastructures import Secret
 
 
 log = logging.getLogger()
@@ -35,11 +36,15 @@ chandler.setFormatter(fmt)
 log.addHandler(chandler)
 
 
-load_dotenv()
+# load_dotenv()
+config = Config(".env")
 
-DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-OPENAI_TOKEN = os.environ.get("OPENAI_TOKEN")
-DEEPL_TOKEN = os.environ.get("DEEPL_TOKEN")
+# DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+# OPENAI_TOKEN = os.environ.get("OPENAI_TOKEN")
+# DEEPL_TOKEN = os.environ.get("DEEPL_TOKEN")
+DISCORD_TOKEN = config("DISCORD_TOKEN", cast=Secret, default="")
+OPENAI_TOKEN = config("OPENAI_TOKEN", cast=Secret, default="")
+DEEPL_TOKEN = config("DEEPL_TOKEN", cast=Secret, default="")
 
 guilds_ids = [
     208894633432973314,  # proving grounds
@@ -101,7 +106,7 @@ class DView(View):
 
 
 bot = Bot()
-cgpt = OA.ChatGPT(OPENAI_TOKEN)
+cgpt = OA.ChatGPT(str(OPENAI_TOKEN))
 
 
 def check_sfw(channel_id) -> bool:
@@ -304,6 +309,8 @@ async def sdimg2img(
 @app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
 async def chat(ctx: discord.Interaction, text: str) -> None:
     """Request chat completion from OpenAI ChatGPT"""
+    if ctx.channel_id is None:
+        return
 
     tag = None
     sent = False
@@ -312,9 +319,9 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
     log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}")
 
     await ctx.response.defer()
-    replied = await cgpt.fake_chat_completion(text, str(ctx.channel_id), selection=4)
+    replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel_id)
 
-    result = f"**{ctx.user}**: {text} \n**{bot.user}**: "
+    result = f"**{ctx.user}**: {text}\n**{bot.user}**: "
     channel = ctx.channel
     if not isinstance(channel, (discord.TextChannel)):
         return
@@ -374,7 +381,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
         else:
             await channel.send(result)
 
-    # log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
+    log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
 
 
 @bot.tree.command(name="upscale", description="Request upscale")
@@ -440,4 +447,4 @@ if __name__ == "__main__" and DISCORD_TOKEN is not None:
     import subprocess
 
     subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859"])
-    bot.run(DISCORD_TOKEN)
+    bot.run(str(DISCORD_TOKEN))
