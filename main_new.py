@@ -36,12 +36,8 @@ chandler.setFormatter(fmt)
 log.addHandler(chandler)
 
 
-# load_dotenv()
 config = Config(".env")
 
-# DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-# OPENAI_TOKEN = os.environ.get("OPENAI_TOKEN")
-# DEEPL_TOKEN = os.environ.get("DEEPL_TOKEN")
 DISCORD_TOKEN = config("DISCORD_TOKEN", cast=Secret, default="")
 OPENAI_TOKEN = config("OPENAI_TOKEN", cast=Secret, default="")
 DEEPL_TOKEN = config("DEEPL_TOKEN", cast=Secret, default="")
@@ -147,12 +143,7 @@ async def lora_autocomplete(interaction: discord.Interaction, current: str) -> l
     *other, current = current.strip().lower().split() or [""]
     if not current and not other:
         return SD.LORALIST[:25]
-    # elif not current:
-    #     return [app_commands.Choice(name=f'{" ".join(other)} {choice.name}'[:100], value=f'{" ".join(other)} {choice.value}'[:100]) for choice in SD.LORALIST][:25]
-    # return [choice for choice in SD.LORALIST if current in choice.name][:25]
-    # return [
-    #     app_commands.Choice(name=f'{" ".join(other)} {choice.name}'[:100], value=f'{" ".join(other)} {choice.value}'[:100]) for choice in SD.LORALIST if current in choice.name
-    # ][:25]
+
     return [
         app_commands.Choice(name=f'{" ".join(other or [current])} {text.name}'[:100], value=f'{" ".join(other or[current])} {text.value}'[:100][:100])
         for text in islice(
@@ -330,6 +321,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
         # print("OK. SHORT ENOUGH")
         await ctx.followup.send(content=result + replied, silent=False)
         result = ""
+        log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
         return
 
     def split_iter(text: str) -> Generator[str, None, None]:
@@ -342,7 +334,6 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
             else:
                 yield line
 
-    # print(list(split_iter(replied)))
     for line in split_iter(replied):
         print(repr(result))
         if len(result) + len(line) < MAX_MSG_LEN:
@@ -380,7 +371,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
             await ctx.followup.send(result)
         else:
             await channel.send(result)
-
+    print(type(replied))
     log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
 
 
@@ -408,8 +399,6 @@ async def upscale(
     except Exception as e:
         log.warning(e.__class__.__name__)
         await ctx.followup.send(e.__class__.__name__)
-
-    pass
 
 
 @bot.event
