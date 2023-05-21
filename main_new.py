@@ -12,6 +12,8 @@ import SD_tools as SD
 from TLator import MyTranslator
 from cdifflib import CSequenceMatcher
 from itertools import islice
+import re
+from typing import Generator
 
 
 log = logging.getLogger()
@@ -48,6 +50,8 @@ guilds_ids = [
 sfw_channels = [1093166962428882996, 831502411411095562]  # japit.gpt  # pg.general
 
 users_allowed_to_sync = [142228355104636928, 264168634123812865]  # drug  # tiki
+
+MAX_MSG_LEN = 1900
 
 
 class Bot(commands.Bot):
@@ -301,23 +305,76 @@ async def sdimg2img(
 async def chat(ctx: discord.Interaction, text: str) -> None:
     """Request chat completion from OpenAI ChatGPT"""
 
+    tag = None
+    sent = False
     text = text[:200]
-    i = 1
+
     log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text}")
+
     await ctx.response.defer()
-    replied = await cgpt.chat_completion(text, str(ctx.channel_id))
-    # print(f"REPLY LENGTH: {len(replied)}")
-    if len(replied) + len(text) < 1900:
+    replied = await cgpt.fake_chat_completion(text, str(ctx.channel_id), selection=4)
+
+    result = f"**{ctx.user}**: {text} \n**{bot.user}**: "
+    channel = ctx.channel
+    if not isinstance(channel, (discord.TextChannel)):
+        return
+
+    if len(result) + len(replied) < 1900:
         # print("OK. SHORT ENOUGH")
-        await ctx.followup.send(content=f"**{ctx.user}**: {text} \n**{bot.user}**: {replied}")
-    else:
-        # print("TOO LONG. TRYING TO SPLIT")
-        await ctx.followup.send(content=f"**{ctx.user}**: {text} \n**{bot.user}**: {replied[:1500]}")
-        # print(replied[1500 * i: 1500 * (i + 1)])
-        while i <= len(replied) / 1500:
-            await ctx.channel.send(replied[1500 * i : 1500 * (i + 1)])  # type: ignore
-            i += 1
-    log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
+        await ctx.followup.send(content=result + replied, silent=False)
+        result = ""
+        return
+
+    def split_iter(text: str) -> Generator[str, None, None]:
+        """Splits oversized strings"""
+
+        for line in text.splitlines():
+            if (lenline := len(line)) > MAX_MSG_LEN:
+                for i in range(0, lenline, MAX_MSG_LEN):
+                    yield line[i : i + MAX_MSG_LEN]
+            else:
+                yield line
+
+    # print(list(split_iter(replied)))
+    for line in split_iter(replied):
+        print(repr(result))
+        if len(result) + len(line) < MAX_MSG_LEN:
+            result += line + "\n"
+            print(len(result))
+            continue
+
+        if len(matches := re.findall(r"```(?:(\w+)\b(?>\n))?", result)) % 2 == 1:
+            tag = matches[-1]
+            result += "```"
+
+            if not sent:
+                await ctx.followup.send(result)
+                sent = True
+            else:
+                await channel.send(result)
+
+            result = f"```{tag}\n{line}"
+
+        else:
+            if not sent:
+                await ctx.followup.send(result)
+                sent = True
+            else:
+                await channel.send(result)
+
+            result = line
+    print("SECOND", repr(result))
+
+    if len(result) > 0 and result != f"```{tag}\n" and result != f"```{tag}\n```\n":
+        if result.count("```") % 2 == 1:
+            result += "```"
+
+        if not sent:
+            await ctx.followup.send(result)
+        else:
+            await channel.send(result)
+
+    # log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
 
 
 @bot.tree.command(name="upscale", description="Request upscale")
