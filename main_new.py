@@ -398,6 +398,8 @@ async def upscale(
     factor: float | None,
     upscaler: SD.upscalers | None,
 ) -> None:
+    view = DView()
+
     if factor is None:
         factor = 2
     if upscaler is None:
@@ -408,7 +410,7 @@ async def upscale(
     try:
         image_f = await SD.upscale(image_url, factor, upscaler)
         log.info(f"Upscaled image saved: {image_f}")
-        await ctx.followup.send(file=discord.File(image_f))
+        view.msg = await ctx.followup.send(file=discord.File(image_f), view=view)
     except Exception as e:
         log.warning(e.__class__.__name__)
         await ctx.followup.send(e.__class__.__name__)
