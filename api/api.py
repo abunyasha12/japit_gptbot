@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Query
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from pathlib import Path
-from SD_tools import file_ops
+import SD_tools as SD
 from typing import Annotated
+import gradio as gr
 
 app = FastAPI()
 sdconfig = Path("sdconfig.csv")
-fops = file_ops()
+fops = SD.file_ops()
 
 
 @app.get("/get_loras", tags=["LoRa"], summary="Получить список лор")
@@ -48,6 +49,30 @@ async def index() -> RedirectResponse:
     """
 
     return RedirectResponse(url="/docs")
+
+
+def simple() -> str:
+    SD.refresh_loras()
+    return SD.RAW_LORALIST
+
+
+with gr.Blocks() as demo:
+    gr.Markdown(value="NIGGAS")
+    with gr.Row():
+        with gr.Column():
+            output_box = gr.Textbox(value=SD.RAW_LORALIST, label="List of loras")
+            rld_btn = gr.Button(value="Reload lora list")
+            rld_btn.click(fn=simple, outputs=output_box)
+        with gr.Column():
+            gr_add_lora_text = gr.Textbox(placeholder="hutao.safetensors", label="LoRa filename to add")
+            gr_add_lora = gr.Button(value="Add LoRa")
+            gr_del_lora_text = gr.Textbox(placeholder="hutao.safetensors", label="LoRa filename to delete")
+            gr_del_lora = gr.Button(value="Delete LoRa")
+            gr_add_lora.click(fn=fops.add_lora, inputs=gr_add_lora_text, outputs=output_box)
+            gr_del_lora.click(fn=fops.del_lora, inputs=gr_del_lora_text, outputs=output_box)
+
+
+app = gr.mount_gradio_app(app, demo, path="/gradio")
 
 
 if __name__ == "__main__":
