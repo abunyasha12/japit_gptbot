@@ -56,12 +56,12 @@ def simple() -> str:
     return SD.RAW_LORALIST
 
 
-with gr.Blocks() as demo:
+with gr.Blocks(theme=gr.themes.Monochrome(text_size=gr.themes.sizes.text_lg)) as demo:
     gr.Markdown(value="NIGGAS")
     with gr.Row():
         with gr.Column():
             output_box = gr.Textbox(value=SD.RAW_LORALIST, label="List of loras")
-            rld_btn = gr.Button(value="Reload lora list")
+            rld_btn = gr.Button(value="Reload LoRa list")
             rld_btn.click(fn=simple, outputs=output_box)
         with gr.Column():
             gr_add_lora_text = gr.Textbox(placeholder="hutao.safetensors", label="LoRa filename to add")
@@ -72,7 +72,11 @@ with gr.Blocks() as demo:
             gr_del_lora.click(fn=fops.del_lora, inputs=gr_del_lora_text, outputs=output_box)
 
 
-app = gr.mount_gradio_app(app, demo, path="/gradio")
+app = gr.mount_gradio_app(
+    app,
+    demo,
+    path="/gradio",
+)
 
 
 if __name__ == "__main__":

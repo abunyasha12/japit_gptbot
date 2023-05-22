@@ -49,8 +49,8 @@ client = httpx.AsyncClient()
 class file_ops:
     async def add_lora(self, lora_filename: str) -> str:
         with sdconfig.open("a+") as f:
-            # f.write(f'<lora:{lora_filename.replace(".safetensors", "").replace(".pt", "").strip()}:1>\n')
-            f.write(f'<lora:{"".join(lora_filename.split(".").pop())}:1>\n')
+            f.write(f'<lora:{lora_filename.replace(".safetensors", "").replace(".pt", "").strip()}:1>\n')
+            # f.write(f'<lora:{".".join(lora_filename.split(".")[-1:-99])}:1>\n')
             f.seek(0)
             return f.read()
 

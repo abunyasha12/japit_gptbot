@@ -450,6 +450,5 @@ async def synchronise(ctx: commands.Context) -> None:
 if __name__ == "__main__" and DISCORD_TOKEN is not None:
     import subprocess
 
-    subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859"])
-    # subprocess.Popen(["python", "gr_interface.py"])
+    subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859", "--log-level", "warning"])
     bot.run(str(DISCORD_TOKEN))
