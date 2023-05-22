@@ -5,6 +5,7 @@ import base64
 import io
 from typing import Literal
 import discord
+from pathlib import Path
 
 SD_HEADERS = {
     "Accept": "application/json",
@@ -26,9 +27,13 @@ filter_words = [
     "topless",
 ]
 
+sdconfig = Path("sdconfig.csv")
+
 LORALIST: list[discord.app_commands.Choice] = []
+RAW_LORALIST: str = ""
 
 with open("sdconfig.csv") as lora_file:
+    RAW_LORALIST = lora_file.read()
     LORALIST.extend(discord.app_commands.Choice(name=line.rstrip("\n"), value=line.rstrip("\n")) for line in lora_file.readlines())
 
 
@@ -41,14 +46,41 @@ base_negative = "blurry, EasyNegative, badhandv4"
 client = httpx.AsyncClient()
 
 
+class file_ops:
+    async def add_lora(self, lora_filename: str) -> str:
+        with sdconfig.open("a+") as f:
+            # f.write(f'<lora:{lora_filename.replace(".safetensors", "").replace(".pt", "").strip()}:1>\n')
+            f.write(f'<lora:{"".join(lora_filename.split(".").pop())}:1>\n')
+            f.seek(0)
+            return f.read()
+
+    async def del_lora(self, lora_filename: str) -> str:
+        with sdconfig.open("r") as fin:
+            # interm = [line for line in fin.readlines() if not line.startswith(lora_filename)]
+            interm = [line for line in fin.readlines() if lora_filename not in line]
+
+        with sdconfig.open("w+") as fout:
+            for line in interm:
+                fout.write(line)
+
+            fout.seek(0)
+            return fout.read()
+
+    async def get_lora(self) -> str:
+        with sdconfig.open("r") as f:
+            return f.read()
+
+
 def clean_prompt(prompt: str, sfw: bool = True) -> str:
     return ", ".join(w for _w in prompt.split(",") if (w := _w.strip().lower()) and w not in filter_words)
 
 
 def refresh_loras() -> None:
     """Refreshes list of LoRas"""
+    global RAW_LORALIST
     LORALIST.clear()
     with open("sdconfig.csv") as lora_file:
+        RAW_LORALIST = lora_file.read()
         LORALIST.extend(discord.app_commands.Choice(name=line.rstrip("\n"), value=line.rstrip("\n")) for line in lora_file.readlines())
 
 

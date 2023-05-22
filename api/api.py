@@ -1,44 +1,47 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from pathlib import Path
+from SD_tools import file_ops
+from typing import Annotated
 
 app = FastAPI()
 sdconfig = Path("sdconfig.csv")
+fops = file_ops()
 
 
-@app.post("/add_lora", tags=["LoRa"])
-async def add_lora(lora_filename: str) -> PlainTextResponse:
-    with sdconfig.open("a") as f:
-        f.write(f'<lora:{lora_filename.replace(".safetensors", "").replace(".pt", "").strip()}:1>\n')
-
-    with sdconfig.open("r") as f:
-        return PlainTextResponse(content=f.read())
-
-
-@app.delete("/del_lora", tags=["LoRa"])
-async def del_lora(lora_filename: str) -> PlainTextResponse:
-    with sdconfig.open("r") as fin:
-        interm = [line for line in fin.readlines() if not line.startswith(lora_filename)]
-
-    with sdconfig.open("w+") as fout:
-        for line in interm:
-            fout.write(line)
-
-        fout.seek(0)
-        return PlainTextResponse(content=fout.read())
-
-
-@app.get("/get_loras", tags=["LoRa"])
+@app.get("/get_loras", tags=["LoRa"], summary="Получить список лор")
 async def get_lora() -> PlainTextResponse:
     """
-    Список лор ([`/get_loras`](/get_loras))
+    Вовзращает список лор в `PlainTextResponse`
     """
-    with sdconfig.open("r") as f:
-        return PlainTextResponse(content=f.read())
+    return PlainTextResponse(await fops.get_lora())
 
 
-@app.head("/", tags=["Index"], response_model=None)
-@app.get("/", tags=["Index"], response_model=None, response_class=RedirectResponse, responses={200: {"description": "HTML Response"}, 307: {"description": "Redirect Response"}})
+@app.post("/add_lora", tags=["LoRa"], summary="Добавить лору")
+async def add_lora(lora_filename: Annotated[str, Query(description="Название файла с расширением либо без", min_length=1)]) -> PlainTextResponse:
+    """
+    Добавляет лору, возвращает обновленный список лор в `PlainTextResponse`
+    """
+    return PlainTextResponse(await fops.add_lora(lora_filename))
+
+
+@app.delete("/del_lora", tags=["LoRa"], summary="Удалить лору")
+async def del_lora(lora_filename: Annotated[str, Query(description="Название лоры для удаления, полное или частичное", min_length=1)]) -> PlainTextResponse:
+    """
+    Удаляет лору по названию, возвращает обновленный список лор в `PlainTextResponse`.
+    """
+    return PlainTextResponse(await fops.del_lora(lora_filename))
+
+
+@app.head("/", tags=["Index"], response_model=None, include_in_schema=False)
+@app.get(
+    "/",
+    tags=["Index"],
+    response_model=None,
+    response_class=RedirectResponse,
+    responses={200: {"description": "HTML Response"}, 307: {"description": "Redirect Response"}},
+    include_in_schema=False,
+)
 async def index() -> RedirectResponse:
     """
     Документация ([`/docs`](/docs))

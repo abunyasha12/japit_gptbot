@@ -80,7 +80,7 @@ class CrossButton(Button):
         super().__init__(emoji="🗑️")
         self.sview = sview
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
         if interaction.message is None or interaction.message.interaction.user.id != interaction.user.id:  # type: ignore
             return
@@ -123,19 +123,23 @@ async def send_dm(msg: discord.Message, usr: discord.User | discord.Member) -> N
             await usr.send(emb.image.url)
         elif emb.url:
             await usr.send(emb.url)
+
     log.info(f"DM sent to {usr}.")
 
 
 async def del_msg(msg: discord.Message, requester: discord.User | discord.Member) -> None:
     if msg.content.startswith("Deleted"):
         return
+
     log.info(f"{requester} requested DELETION of: {msg.id}")
+
     await msg.edit(
         content=f"Deleted on the request from **{requester}**",
         embeds=[],
         attachments=[],
         view=None,
     )
+
     log.info(f"{msg.id} DELETED")
 
 
@@ -174,7 +178,9 @@ async def on_ready() -> None:
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolutions) -> None:
-    """Request image from OpenAI DALL-E"""
+    """
+    Request image from OpenAI DALL-E
+    """
 
     view = DView()
     log.info(f"DALL-E image requested by {ctx.user} in {ctx.channel} {ctx.channel_id}: {prompt}")
@@ -212,6 +218,9 @@ async def sdimage(
     loras: str | None,
     negative: str | None,
 ) -> None:
+    """
+    Request image from Stable Diffusion (may not be available)
+    """
     await ctx.response.defer()
     sfw = check_sfw(ctx.channel_id)
 
@@ -259,7 +268,9 @@ async def sdimg2img(
     denoising: float,
     image_url: str,
 ) -> None:
-    """Request an image-to-image generation from Stable Diffusion."""
+    """
+    Request an image-to-image generation from Stable Diffusion.
+    """
 
     view = DView()
     log.info(f"SD i2i image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}")
@@ -299,7 +310,9 @@ async def sdimg2img(
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
 async def chat(ctx: discord.Interaction, text: str) -> None:
-    """Request chat completion from OpenAI ChatGPT"""
+    """
+    Request chat completion from OpenAI ChatGPT
+    """
     if ctx.channel_id is None:
         return
 
@@ -421,7 +434,9 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
 
 @bot.hybrid_command(hidden=True)
 async def synchronise(ctx: commands.Context) -> None:
-    """sync commands"""
+    """
+    sync commands
+    """
     if ctx.author.id not in users_allowed_to_sync or ctx.guild is None:
         return
     print(f"sync requested in {ctx.guild}")
@@ -436,4 +451,5 @@ if __name__ == "__main__" and DISCORD_TOKEN is not None:
     import subprocess
 
     subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859"])
+    subprocess.Popen(["python", "gr_interface.py"])
     bot.run(str(DISCORD_TOKEN))
