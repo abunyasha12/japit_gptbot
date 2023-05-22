@@ -4,8 +4,11 @@
 *.png
 *.pyc
 pyproject.toml
-logs/
 test.py
 test.txt
+logs/
+images/
+images_sd/
+extras/
 chats/
 sdconfig.csv
