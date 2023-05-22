@@ -34,7 +34,7 @@ RAW_LORALIST: str = ""
 
 with open("sdconfig.csv") as lora_file:
     RAW_LORALIST = lora_file.read()
-    LORALIST.extend(discord.app_commands.Choice(name=line.rstrip("\n"), value=line.rstrip("\n")) for line in lora_file.readlines())
+    LORALIST.extend(discord.app_commands.Choice(name=line, value=line) for line in RAW_LORALIST.split("\n"))
 
 
 resolutions = Literal["448", "512", "640", "704", "768", "832", "896"]
@@ -77,11 +77,11 @@ def clean_prompt(prompt: str, sfw: bool = True) -> str:
 
 def refresh_loras() -> None:
     """Refreshes list of LoRas"""
-    global RAW_LORALIST
+
     LORALIST.clear()
     with open("sdconfig.csv") as lora_file:
         RAW_LORALIST = lora_file.read()
-        LORALIST.extend(discord.app_commands.Choice(name=line.rstrip("\n"), value=line.rstrip("\n")) for line in lora_file.readlines())
+        LORALIST.extend(discord.app_commands.Choice(name=line, value=line) for line in RAW_LORALIST.split("\n"))
 
 
 def dt_os() -> str:
