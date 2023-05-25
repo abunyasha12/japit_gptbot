@@ -63,10 +63,13 @@ class Bot(commands.Bot):
         intents.members = True
         super().__init__(command_prefix="!", intents=intents)
 
+    async def setup_hook(self):
+        self.add_view(DView())
+
 
 class EnvelopeButton(Button):
     def __init__(self) -> None:
-        super().__init__(emoji="✉️")
+        super().__init__(custom_id="persist:envelope_button", emoji="✉️")
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -77,7 +80,7 @@ class EnvelopeButton(Button):
 
 class CrossButton(Button):
     def __init__(self, sview) -> None:
-        super().__init__(emoji="🗑️")
+        super().__init__(custom_id="persist:cross_button", emoji="🗑️")
         self.sview = sview
 
     async def callback(self, interaction: discord.Interaction) -> None:
@@ -89,7 +92,7 @@ class CrossButton(Button):
 
 
 class DView(View):
-    def __init__(self, timeout=300) -> None:
+    def __init__(self, timeout=None) -> None:
         self.msg = None
         super().__init__(timeout=timeout)
         self.add_item(EnvelopeButton())

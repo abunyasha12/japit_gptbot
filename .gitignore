@@ -1,7 +1,5 @@
 
 .env
-*.log
-*.png
 *.pyc
 pyproject.toml
 test.py
@@ -12,3 +10,5 @@ images_sd/
 extras/
 chats/
 sdconfig.csv
+Dockerfile
+.dockerignore
