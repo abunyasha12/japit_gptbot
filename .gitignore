@@ -12,3 +12,4 @@ chats/
 sdconfig.csv
 Dockerfile
 .dockerignore
+.editorconfig

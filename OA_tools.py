@@ -41,7 +41,7 @@ class ChatGPT:
     async def chat_completion(self, conversation: ConversationLog, convo_id: int = 1093166962428882996) -> str:
         openai.api_key = self.oaitoken
         self.add_to_conversation(conversation, convo_id)
-        messages = [m.dict(include={"role", "content"}) for m in self.conversations[convo_id].messages[-15:]]
+        messages = [m.dict(include={"role", "content"}) for m in self.conversations[convo_id].messages[-10:]]
 
         try:
             content: str = await OpenAI_Typed.ChatCompletion.acreate(model="gpt-3.5-turbo", messages=messages)

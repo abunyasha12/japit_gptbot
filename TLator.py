@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import discord
 from discord import app_commands
 from discord.app_commands import TranslationContextLocation as CL
