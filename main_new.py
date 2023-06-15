@@ -328,7 +328,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
     await ctx.response.defer()
     replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel_id)
 
-    result = f"**{ctx.user}**: {text}\n**{bot.user}**: "
+    result = f"**{ctx.user.display_name}**: {text}\n**{bot.user.display_name}**: "
     channel = ctx.channel
     if not isinstance(channel, (discord.TextChannel)):
         return
