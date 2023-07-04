@@ -1,11 +1,12 @@
 # from revChatGPT.V3 import Chatbot
-import openai
-import openai.error as oe
-from typing import Literal
 import json
 from pathlib import Path
-from models.openai import OpenAI_Typed, ConversationLog, Conversation
+from typing import Literal
 
+import openai
+import openai.error as oe
+
+from plugins.openai import Conversation, ConversationLog, OpenAI_Typed
 
 resolutions = Literal["256", "512"]
 

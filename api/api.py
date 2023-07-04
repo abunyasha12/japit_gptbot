@@ -1,9 +1,11 @@
+from typing import Annotated
+from pathlib import Path
+
 from fastapi import FastAPI, Query
 from fastapi.responses import PlainTextResponse, RedirectResponse
-from pathlib import Path
-import SD_tools as SD
-from typing import Annotated
 import gradio as gr
+
+import plugins.SD_tools as SD
 
 app = FastAPI()
 sdconfig = Path("sdconfig.csv")

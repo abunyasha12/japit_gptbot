@@ -1,10 +1,12 @@
 import discord
+import pandas
 from discord import app_commands
 from discord.app_commands import TranslationContextLocation as CL
-import pandas
 
 
 class MyTranslator(app_commands.Translator):
+    """Класс переводчика для автопревода"""
+
     def __init__(self):
         self.df = pandas.read_csv("ru_RU.csv")
 
