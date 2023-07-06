@@ -349,7 +349,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
         return
 
     await ctx.response.defer()
-    log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text[100]}")
+    log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text[:100]}")
 
     tag = None
     sent = False
@@ -366,7 +366,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
         # print("OK. SHORT ENOUGH")
         await ctx.followup.send(content=result + replied, silent=False)
         result = ""
-        log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied[100]}")
+        log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied[:100]}")
         return
 
     def split_iter(text: str) -> Generator[str, None, None]:
