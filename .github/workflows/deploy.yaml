@@ -1,0 +1,45 @@
+name: raspberry
+
+on:
+  push:
+    branches:
+      - master
+
+  # manually
+  workflow_dispatch:
+
+jobs:
+  gptbot-master-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # cd to path where code will be located
+            cd /var/smpt/scripts/api/
+            docker-compose -f docker-compose.test.yml stop
+            # update code
+            ssh-agent bash -c 'ssh-add ~/.ssh/id_rsa_api; git pull'
+            # updating the .env file
+            cat <<EOF > /var/smpt/scripts/api/.env
+            # start of envfile
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            DB_PORT_EXTERNAL=${{ secrets.DB_PORT_EXTERNAL }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DEBUG=${{ secrets.DEBUG }}
+            DEBUG_PANEL=${{ secrets.DEBUG_PANEL }}
+            # end of envfile
+            EOF
+            # see end result of envfile
+            ls -l /var/smpt/scripts/api/.env
+            # run as daemon
+            docker-compose -f docker-compose.test.yml up --build -d

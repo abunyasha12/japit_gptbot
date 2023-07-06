@@ -353,7 +353,7 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
 
     tag = None
     sent = False
-    text = text[:200]
+    text = text
 
     replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel.id)
 
