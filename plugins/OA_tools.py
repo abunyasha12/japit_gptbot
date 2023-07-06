@@ -30,23 +30,22 @@ class ChatGPT:
                 self.conversations.update({int(item.stem): Conversation(**json.load(file))})
 
     def get_max_messages(self, convo_id: int) -> list[dict]:
-        messages = [{}]
+        messages = []
         num_tokens = 0
         enc = tiktoken.encoding_for_model("gpt-4")
         for item in reversed(self.conversations[convo_id].messages):
             num_tokens += 4
             if num_tokens + len(enc.encode(item.content)) > 1000:
+                if len(messages) == 0:
+                    print("WARNING SOMETHING WENT WRONG. SENT A PLACEHOLDER")
+                    return [{"role": "user", "content": "Tell me that you were not able to process request because the request was too big."}]
                 print(f"RETURNING {len(messages)} MESSAGES")
                 print(f"COUNTED: {num_tokens} TOKENS")
-                # print(f"RETURNING THIS LOG: \n{repr(messages)}")
                 return messages
             num_tokens += len(enc.encode(item.content))
-            # print(f"NUMTOKENS = {num_tokens}")
             messages.insert(0, item.dict(include={"role", "content"}))
-            # print(f"LENMSG = {len(messages)}")
         print(f"RETURNING {len(messages)} MESSAGES")
         print(f"COUNTED: {num_tokens} TOKENS")
-        # print(f"RETURNING THIS LOG: \n{repr(messages)}")
         return messages
 
     def add_to_conversation(self, conversation: ConversationLog, convo_id: int = 1093166962428882996) -> None:
@@ -65,8 +64,6 @@ class ChatGPT:
         openai.api_key = self.oaitoken
         self.add_to_conversation(conversation, convo_id)
         messages = self.get_max_messages(convo_id=convo_id)
-        # messages = [m.dict(include={"role", "content"}) for m in self.conversations[convo_id].messages[-5:]]
-        # print(f"OLD MESSAGES : {[m.dict(include={'role', 'content'}) for m in self.conversations[convo_id].messages[-5:]]}")
 
         try:
             content: str = await OpenAI_Typed.ChatCompletion.acreate(model="gpt-4", messages=messages)
