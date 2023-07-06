@@ -1,10 +1,12 @@
 # from revChatGPT.V3 import Chatbot
-import json
-from pathlib import Path
 from typing import Literal
+import json
+
+from pathlib import Path
 
 import openai
 import openai.error as oe
+import tiktoken
 
 from plugins.openai import Conversation, ConversationLog, OpenAI_Typed
 
@@ -27,6 +29,26 @@ class ChatGPT:
             with item.open(encoding="utf-8") as file:
                 self.conversations.update({int(item.stem): Conversation(**json.load(file))})
 
+    def get_max_messages(self, convo_id: int) -> list[dict]:
+        messages = [{}]
+        num_tokens = 0
+        enc = tiktoken.encoding_for_model("gpt-4")
+        for item in reversed(self.conversations[convo_id].messages):
+            num_tokens += 4
+            if num_tokens + len(enc.encode(item.content)) > 1000:
+                print(f"RETURNING {len(messages)} MESSAGES")
+                print(f"COUNTED: {num_tokens} TOKENS")
+                # print(f"RETURNING THIS LOG: \n{repr(messages)}")
+                return messages
+            num_tokens += len(enc.encode(item.content))
+            # print(f"NUMTOKENS = {num_tokens}")
+            messages.insert(0, item.dict(include={"role", "content"}))
+            # print(f"LENMSG = {len(messages)}")
+        print(f"RETURNING {len(messages)} MESSAGES")
+        print(f"COUNTED: {num_tokens} TOKENS")
+        # print(f"RETURNING THIS LOG: \n{repr(messages)}")
+        return messages
+
     def add_to_conversation(self, conversation: ConversationLog, convo_id: int = 1093166962428882996) -> None:
         path = Path(".") / "chats" / f"{convo_id}.json"
 
@@ -42,10 +64,12 @@ class ChatGPT:
     async def chat_completion(self, conversation: ConversationLog, convo_id: int = 1093166962428882996) -> str:
         openai.api_key = self.oaitoken
         self.add_to_conversation(conversation, convo_id)
-        messages = [m.dict(include={"role", "content"}) for m in self.conversations[convo_id].messages[-10:]]
+        messages = self.get_max_messages(convo_id=convo_id)
+        # messages = [m.dict(include={"role", "content"}) for m in self.conversations[convo_id].messages[-5:]]
+        # print(f"OLD MESSAGES : {[m.dict(include={'role', 'content'}) for m in self.conversations[convo_id].messages[-5:]]}")
 
         try:
-            content: str = await OpenAI_Typed.ChatCompletion.acreate(model="gpt-3.5-turbo", messages=messages)
+            content: str = await OpenAI_Typed.ChatCompletion.acreate(model="gpt-4", messages=messages)
 
             self.add_to_conversation(ConversationLog(content=content), convo_id)
 

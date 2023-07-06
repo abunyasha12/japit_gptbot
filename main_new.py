@@ -508,4 +508,5 @@ if __name__ == "__main__" and DISCORD_TOKEN is not None:
     import subprocess
 
     subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859", "--log-level", "warning"])  # noqa: S603, S607, S104
+    print(str(DISCORD_TOKEN))
     bot.run(str(DISCORD_TOKEN))
