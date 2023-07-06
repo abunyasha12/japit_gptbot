@@ -283,11 +283,11 @@ async def sdimage(ctx: discord.Interaction, prompt: str, height: SD.resolutions,
     height=ls("Vertical resolution in pixels"),
     width=ls("Horizontal resolution in pixels"),
     denoising=ls("Denoising value 0 - 1 with 0.05 increments"),
-    image_url=ls("URL for img2img image"),
+    image=ls("Image"),
 )
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
-async def sdimg2img(ctx: discord.Interaction, prompt: str, negative: str, height: SD.resolutions, width: SD.resolutions, denoising: float, image_url: str) -> None:
+async def sdimg2img(ctx: discord.Interaction, prompt: str, negative: str, height: SD.resolutions, width: SD.resolutions, denoising: float, image: discord.Attachment) -> None:
     """
     Запрос img2img от Stable Diffusion.
     """
@@ -307,12 +307,13 @@ async def sdimg2img(ctx: discord.Interaction, prompt: str, negative: str, height
         return
 
     try:
+        image_string = await SD.image_from_bytes_to_b64str(await image.read())
         files = await SD.img2img(
             prompt,
             int(height),
             int(width),
             denoising,
-            image_url,
+            image_string,
             negative,
             check_sfw(ctx.channel.id),
         )
@@ -320,7 +321,7 @@ async def sdimg2img(ctx: discord.Interaction, prompt: str, negative: str, height
         view.msg = await ctx.followup.send(files=[discord.File(file) for file in files], view=view)
 
     except SD.ImgNotFound:
-        await ctx.followup.send(f"Image not found! URL provided: {image_url}")
+        await ctx.followup.send("Image not found! URL provided: PLACEHOLDER")
         log.info("Image not found")
 
     except SD.ImgTooLarge:
@@ -331,9 +332,9 @@ async def sdimg2img(ctx: discord.Interaction, prompt: str, negative: str, height
         await ctx.followup.send("SD timed out!")
         log.warning("SD TIMED OUT")
 
-    except Exception as e:
-        log.warning(f"Unknown exception {e.__class__.__name__}")
-        await ctx.followup.send(str(e))
+    # except Exception as e:
+    #     log.warning(f"Unknown exception {e.__class__.__name__}")
+    #     await ctx.followup.send(str(e))
 
 
 @bot.tree.command(name="chat", description=ls("Request chat completion from OpenAI ChatGPT"))
@@ -417,10 +418,10 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
 
 
 @bot.tree.command(name="upscale", description="Request upscale")
-@app_commands.describe(image_url="Image URL", factor="Upscale factor 1x-4x", upscaler="Upscaler")
+@app_commands.describe(image="Image", factor="Upscale factor 1x-4x", upscaler="Upscaler")
 @app_commands.guilds(*guilds_ids)
 @app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
-async def upscale(ctx: discord.Interaction, image_url: str, factor: float | None, upscaler: SD.upscalers | None) -> None:
+async def upscale(ctx: discord.Interaction, image: discord.Attachment, factor: float | None, upscaler: SD.upscalers | None) -> None:
     """Запрос апскейла от Stable Diffusion"""
     view = DView()
 
@@ -431,13 +432,26 @@ async def upscale(ctx: discord.Interaction, image_url: str, factor: float | None
 
     log.info(f"Upscale requested by {ctx.user} in {ctx.channel} {ctx.channel_id}")
     await ctx.response.defer()
+    image_string = await SD.image_from_bytes_to_b64str(await image.read())
     try:
-        image_f = await SD.upscale(image_url, factor, upscaler)
+        image_f = await SD.upscale(image_string, factor, upscaler)
         log.info(f"Upscaled image saved: {image_f}")
         view.msg = await ctx.followup.send(file=discord.File(image_f), view=view)
     except Exception as e:
-        log.warning(e.__class__.__name__)
-        await ctx.followup.send(e.__class__.__name__)
+        log.warning(e, e.__class__.__name__)
+        await ctx.followup.send(str(e))
+
+
+# @bot.tree.command(name="testattachment", description="testattachment")
+# # @app_commands.describe(image_url="Image URL", factor="Upscale factor 1x-4x", upscaler="Upscaler")
+# @app_commands.guilds(*guilds_ids)
+# # @app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+# async def test_attachment(ctx: discord.Interaction, image: discord.Attachment):
+#     await ctx.response.defer()
+#     imgbytes = await image.read()
+#     print(b64encode(imgbytes).decode())
+
+#     await ctx.followup.send("check")
 
 
 # @bot.tree.command(name="localchat")

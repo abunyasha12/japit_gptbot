@@ -1,11 +1,14 @@
-import httpx
-from datetime import datetime
-from PIL import Image, PngImagePlugin
-import base64
-import io
 from typing import Literal
-import discord
+import base64
+
+from datetime import datetime
+import io
 from pathlib import Path
+
+import discord
+import httpx
+
+from PIL import Image, PngImagePlugin
 
 SD_HEADERS = {
     "Accept": "application/json",
@@ -109,13 +112,14 @@ class SDTimeout(Exception):
 async def checksd() -> bool:
     try:
         resp = await client.get(url=f"{SD_API_URL}/", timeout=3)
-        if resp.status_code == 200:
-            return True
-        else:
-            return False
+        return resp.status_code == 200
     except Exception as e:
         print(e.__class__.__name__)
         return False
+
+
+async def image_from_bytes_to_b64str(image: bytes) -> str:
+    return base64.b64encode(image).decode()
 
 
 async def image_from_url_to_b64str(image_url) -> str:
@@ -154,7 +158,7 @@ async def txt2img(prompt: str, height: int, width: int, negative: str, sfw: bool
         "sampler_name": "DPM++ 2S a Karras",
         "batch_size": batch,
         "n_iter": 1,
-        "steps": 21,
+        "steps": 19,
         "width": width,
         "height": height,
         "negative_prompt": neg,
@@ -176,15 +180,7 @@ async def txt2img(prompt: str, height: int, width: int, negative: str, sfw: bool
     return filenames
 
 
-async def img2img(
-    prompt: str,
-    vert: int,
-    hor: int,
-    denoising: float,
-    im2im_url: str,
-    negative: str,
-    sfw: bool = True,
-) -> list[str]:
+async def img2img(prompt: str, vert: int, hor: int, denoising: float, image_b64_string: str, negative: str, sfw: bool = True) -> list[str]:
     if negative == "":
         negative = base_negative
     if sfw:
@@ -193,23 +189,23 @@ async def img2img(
         neg = negative
     genname = f"{dt_os()}_image"
     filenames = []
-    try:
-        im2im_i = await image_from_url_to_b64str(im2im_url)
-    except Exception:
-        raise
+    # try:
+    #     im2im_i = await image_from_url_to_b64str(im2im_url)
+    # except Exception:
+    #     raise
     if vert > 640 or hor > 640:
         batch = 1
     else:
         batch = 2
     gen_param = {
-        "init_images": [im2im_i],
+        "init_images": [image_b64_string],
         "resize_mode": 1,
         "denoising_strength": denoising,
         "prompt": prompt,
         "sampler_name": "DPM++ 2S a Karras",
         "batch_size": batch,
         "n_iter": 1,
-        "steps": 21,
+        "steps": 19,
         "width": hor,
         "height": vert,
         "negative_prompt": neg,
@@ -232,17 +228,16 @@ async def img2img(
     return filenames
 
 
-async def upscale(image_url: str, scale_factor: float, upscaler: str):
+async def upscale(image_b64_string: str, scale_factor: float, upscaler: str):
     genname = f"{dt_os()}_image"
-    im_b64 = await image_from_url_to_b64str(image_url)
+    # im_b64 = await image_from_url_to_b64str(image_url)
 
     scale_factor = max(min(scale_factor, 4), 1)
-    print(scale_factor)
     gen_param = {
         "resize_mode": 0,
         "upscaling_resize": scale_factor,
         "upscaler_1": upscaler,
-        "image": im_b64,
+        "image": image_b64_string,
     }
     try:
         response = await client.post(url=f"{SD_API_URL}/sdapi/v1/extra-single-image", json=gen_param, timeout=30)
