@@ -16,7 +16,7 @@ from discord.ui import Button, View
 from starlette.config import Config
 from starlette.datastructures import Secret
 
-import localai_tools as LAI
+# import localai_tools as LAI
 import plugins.OA_tools as OA
 
 from plugins.openai import ConversationLog
@@ -122,7 +122,7 @@ class DView(View):
 
 bot = Bot()
 cgpt = OA.ChatGPT(str(OPENAI_TOKEN))
-local_ai = LAI.local_ai()
+# local_ai = LAI.local_ai()
 
 
 def check_sfw(channel_id: int) -> bool:
