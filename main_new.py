@@ -157,7 +157,7 @@ async def del_msg(msg: discord.Message, requester: discord.User | discord.Member
     log.info(f"{requester} requested DELETION of: {msg.id}")
 
     await msg.edit(
-        content=f"Deleted on the request from **{requester}**",
+        content=f"Deleted on the request from **{requester.display_name}**",
         embeds=[],
         attachments=[],
         view=None,
@@ -353,7 +353,10 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
 
     tag = None
     sent = False
-    text = text[:200]
+    if text.startswith("$$$"):
+        text.replace("$$$", "")
+    else:
+        text = text[:200]
 
     replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel.id)
 
