@@ -279,7 +279,7 @@ async def sdimage(ctx: discord.Interaction, prompt: str, height: SD.resolutions,
 @bot.tree.command(name="kaimage", description="Request image generation from Kandinsky")
 @app_commands.describe(prompt=ls("Image prompt"), height=ls("Vertical resolution in pixels"), width=ls("Horizontal resolution in pixels"))
 @app_commands.guilds(*guilds_ids)
-# @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
+@app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
 async def kaimage(ctx: discord.Interaction, prompt: str, height: SD.resolutions, width: SD.resolutions) -> None:
     """
     Запрос генерации картинки от Kandinsky
