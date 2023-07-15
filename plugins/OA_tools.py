@@ -37,15 +37,15 @@ class ChatGPT:
             num_tokens += 4
             if num_tokens + len(enc.encode(item.content)) > 1000:
                 if len(messages) == 0:
-                    print("WARNING SOMETHING WENT WRONG. SENT A PLACEHOLDER")
+                    # print("WARNING SOMETHING WENT WRONG. SENT A PLACEHOLDER")
                     return [{"role": "user", "content": "Tell me that you were not able to process request because the request was too big."}]
-                print(f"RETURNING {len(messages)} MESSAGES")
-                print(f"COUNTED: {num_tokens} TOKENS")
+                # print(f"RETURNING {len(messages)} MESSAGES")
+                # print(f"COUNTED: {num_tokens} TOKENS")
                 return messages
             num_tokens += len(enc.encode(item.content))
             messages.insert(0, item.dict(include={"role", "content"}))
-        print(f"RETURNING {len(messages)} MESSAGES")
-        print(f"COUNTED: {num_tokens} TOKENS")
+        # print(f"RETURNING {len(messages)} MESSAGES")
+        # print(f"COUNTED: {num_tokens} TOKENS")
         return messages
 
     def add_to_conversation(self, conversation: ConversationLog, convo_id: int = 1093166962428882996) -> None:
@@ -87,8 +87,7 @@ class ChatGPT:
             )
             return image_url["data"][0]["url"]  # type:ignore
         except oe.InvalidRequestError:
-            print("InvalidRequestError: Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system.")
-            raise InvalidRequest
+            raise
         except Exception as e:
             print(e.__class__.__name__, e)
             text = "exception"

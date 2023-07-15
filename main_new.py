@@ -16,6 +16,8 @@ from discord.ui import Button, View
 from starlette.config import Config
 from starlette.datastructures import Secret
 
+import plugins.kandinsky as KD
+
 # import localai_tools as LAI
 import plugins.OA_tools as OA
 
@@ -25,6 +27,7 @@ from plugins.TLator import MyTranslator
 
 log = logging.getLogger()
 logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
 log.setLevel(logging.INFO)
 
 fhandler = logging.handlers.TimedRotatingFileHandler("./logs/logfile.log", "D", backupCount=30, encoding="utf-8")
@@ -217,7 +220,7 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolution
     view = DView()
     try:
         image_url = await cgpt.generate_image(prompt=prompt, resolution=resolution)
-        await SD.logimage(image_url)
+        await SD.logimage([image_url])
         log.info(f'DALL-E image saved: {f"images/{SD.dt_os()}_image.png"}')
         view.msg = await ctx.followup.send(content=image_url, view=view)
     except OA.InvalidRequest:
@@ -271,6 +274,40 @@ async def sdimage(ctx: discord.Interaction, prompt: str, height: SD.resolutions,
         await ctx.followup.send("SD offline! Try DALL-E **/image** instead.")
         log.warning("SD unavailable!")
         return
+
+
+@bot.tree.command(name="kaimage", description="Request image generation from Kandinsky")
+@app_commands.describe(prompt=ls("Image prompt"), height=ls("Vertical resolution in pixels"), width=ls("Horizontal resolution in pixels"))
+@app_commands.guilds(*guilds_ids)
+# @app_commands.checks.cooldown(1, 120, key=lambda i: (i.guild_id, i.user.id))
+async def kaimage(ctx: discord.Interaction, prompt: str, height: SD.resolutions, width: SD.resolutions) -> None:
+    """
+    Запрос генерации картинки от Kandinsky
+    """
+
+    await ctx.response.defer()
+    if ctx.channel is None:
+        await ctx.followup.send("`ERROR: No channel found`")
+        return
+    log.info(f"Kandinsky image requested by {ctx.user} in {ctx.channel} {ctx.channel_id} : {prompt}")
+
+    view = DView()
+
+    try:
+        links = await KD.ImageGenerator().generate_image(prompt, int(height), int(width))
+        files = await SD.logimage(links)
+
+        view.msg = await ctx.followup.send(
+            content=f"**PROMPT**: *{prompt}*",
+            files=[discord.File(file) for file in files],
+            view=view,
+        )
+
+        log.info(f'Kandinsky image saved: {", ".join(files)}')
+
+    except Exception as e:
+        log.warning(str(e))
+        await ctx.followup.send(str(e))
 
 
 @bot.tree.command(
@@ -511,5 +548,4 @@ if __name__ == "__main__" and DISCORD_TOKEN is not None:
     import subprocess
 
     subprocess.Popen(["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "7859", "--log-level", "warning"])  # noqa: S603, S607, S104
-    print(str(DISCORD_TOKEN))
     bot.run(str(DISCORD_TOKEN))

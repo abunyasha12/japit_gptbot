@@ -91,10 +91,15 @@ def dt_os() -> str:
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-async def logimage(url) -> None:
-    resp = await client.get(url)
-    with open(f"images/{dt_os()}_image.png", "wb") as f:
-        f.write(resp.content)
+async def logimage(url_list: list[str]) -> list[str]:
+    ret_list: list[str] = []
+    for ind, link in enumerate(url_list):
+        resp = await client.get(link)
+        fname = f"images/{dt_os()}_{ind}_image.png"
+        with open(fname, "wb") as f:
+            f.write(resp.content)
+        ret_list.append(fname)
+    return ret_list
 
 
 class ImgNotFound(Exception):
