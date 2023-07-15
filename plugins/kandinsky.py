@@ -16,9 +16,7 @@ class ImageGenerator:
         loop = asyncio.get_event_loop()
 
         try:
-            print("TRYING")
             output = await loop.run_in_executor(None, self.actual_image_generator, prompt, height, width, num)
-            print("GOT IMAGES")
 
             if isinstance(output, list):
                 return output
