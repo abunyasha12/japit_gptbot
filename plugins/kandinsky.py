@@ -1,8 +1,10 @@
-from typing import Self
+from typing import Literal, Self
 import asyncio
 
 from dotenv import load_dotenv
 import replicate
+
+resolutions = Literal["384", "512", "640", "704", "768", "960", "1024"]
 
 
 class ImageGenerator:
