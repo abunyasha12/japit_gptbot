@@ -1,6 +1,7 @@
 import logging
 
 from typing import Self
+import asyncio
 from collections.abc import Generator
 from itertools import islice
 import logging.handlers
@@ -24,10 +25,13 @@ import plugins.OA_tools as OA
 from plugins.openai import ConversationLog
 import plugins.SD_tools as SD
 from plugins.TLator import MyTranslator
+from plugins.vkmodule import VK
 
 log = logging.getLogger()
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("vkbottle").setLevel(logging.WARNING)
+logging.getLogger("discord").setLevel(logging.WARNING)
 log.setLevel(logging.INFO)
 
 fhandler = logging.handlers.TimedRotatingFileHandler("./logs/logfile.log", "D", backupCount=30, encoding="utf-8")
@@ -50,6 +54,7 @@ config = Config(".env")
 DISCORD_TOKEN = config("DISCORD_TOKEN", cast=Secret, default="")
 OPENAI_TOKEN = config("OPENAI_TOKEN", cast=Secret, default="")
 DEEPL_TOKEN = config("DEEPL_TOKEN", cast=Secret, default="")
+VK_TOKEN = config("VK_TOKEN", cast=Secret, default="")
 
 guilds_ids = [
     208894633432973314,  # proving grounds
@@ -195,14 +200,6 @@ async def cooldown_error(interaction: discord.Interaction, error: app_commands.A
 
     if isinstance(error, app_commands.CommandOnCooldown):
         await interaction.response.send_message(content=f"Try again in {round(error.retry_after)} seconds.", ephemeral=True)
-
-
-@bot.event
-async def on_ready() -> None:
-    """Вызывается когда бот готов к работе"""
-
-    log.info(f"Logged in as {bot.user}")
-    await bot.tree.set_translator(MyTranslator())
 
 
 @bot.tree.command(name="image", description=ls("Request image from DALL-E"))
@@ -482,18 +479,6 @@ async def upscale(ctx: discord.Interaction, image: discord.Attachment, factor: f
         await ctx.followup.send(str(e))
 
 
-# @bot.tree.command(name="testattachment", description="testattachment")
-# # @app_commands.describe(image_url="Image URL", factor="Upscale factor 1x-4x", upscaler="Upscaler")
-# @app_commands.guilds(*guilds_ids)
-# # @app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
-# async def test_attachment(ctx: discord.Interaction, image: discord.Attachment):
-#     await ctx.response.defer()
-#     imgbytes = await image.read()
-#     print(b64encode(imgbytes).decode())
-
-#     await ctx.followup.send("check")
-
-
 # @bot.tree.command(name="localchat")
 # # @app_commands.describe(image_url="Image URL", factor="Upscale factor 1x-4x", upscaler="Upscaler")
 # @app_commands.guilds(*guilds_ids)
@@ -542,6 +527,49 @@ async def synchronise(ctx: commands.Context) -> None:
     bot.tree.copy_global_to(guild=ctx.guild)
     comms = await bot.tree.sync(guild=ctx.guild)
     await ctx.reply(f"SYNCED {comms}", ephemeral=True)
+
+
+@bot.event
+async def on_ready() -> None:
+    """Вызывается когда бот готов к работе"""
+
+    log.info(f"Logged in as {bot.user}")
+    await bot.tree.set_translator(MyTranslator())
+    asyncio.get_event_loop().create_task(football_poster())
+
+
+async def football_poster() -> None:
+    if not VK_TOKEN:
+        log.warning("No VK_TOKEN! Football poster will not work")
+        return
+
+    vk = VK(str(VK_TOKEN))
+    channels_to_post = [
+        # 1094277109372952637,  # football
+        831502411411095562,  # pg general
+    ]
+    channels = [bot.get_channel(i) for i in channels_to_post]
+
+    while True:
+        try:
+            posts = await vk.check_for_updates(-199045714)  # https://vk.com/id199045714 SoccerBlog
+        except Exception as e:
+            for channel in channels:
+                if not isinstance(channel, discord.TextChannel):
+                    continue
+                await channel.send(f"Oops... {e}")
+            break
+
+        for channel in channels:
+            if not isinstance(channel, discord.TextChannel):
+                continue
+            for post in posts:
+                urls = "\n".join(post["photo_urls"])
+                await channel.send(f"{post['text']}")
+                await channel.send(urls)
+                await asyncio.sleep(2)
+
+        await asyncio.sleep(60)
 
 
 if __name__ == "__main__" and DISCORD_TOKEN is not None:

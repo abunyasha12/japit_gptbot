@@ -1,7 +1,8 @@
 import discord
-import pandas
+
 from discord import app_commands
 from discord.app_commands import TranslationContextLocation as CL
+import pandas
 
 
 class MyTranslator(app_commands.Translator):
