@@ -25,7 +25,6 @@ import plugins.OA_tools as OA
 from plugins.openai import ConversationLog
 import plugins.SD_tools as SD
 from plugins.TLator import MyTranslator
-from plugins.vkmodule import VK
 
 log = logging.getLogger()
 logging.getLogger("openai").setLevel(logging.WARNING)
@@ -535,41 +534,6 @@ async def on_ready() -> None:
 
     log.info(f"Logged in as {bot.user}")
     await bot.tree.set_translator(MyTranslator())
-    asyncio.get_event_loop().create_task(football_poster())
-
-
-async def football_poster() -> None:
-    if not VK_TOKEN:
-        log.warning("No VK_TOKEN! Football poster will not work")
-        return
-
-    vk = VK(str(VK_TOKEN))
-    channels_to_post = [
-        1094277109372952637,  # football
-        # 831502411411095562,  # pg general
-    ]
-    channels = [bot.get_channel(i) for i in channels_to_post]
-
-    while True:
-        try:
-            posts = await vk.check_for_updates(-199045714)  # https://vk.com/id199045714 SoccerBlog
-        except Exception as e:
-            for channel in channels:
-                if not isinstance(channel, discord.TextChannel):
-                    continue
-                await channel.send(f"Oops... {e}")
-            break
-
-        for channel in channels:
-            if not isinstance(channel, discord.TextChannel):
-                continue
-            for post in posts:
-                urls = "\n".join(post["photo_urls"])
-                await channel.send(f"{post['text']}")
-                await channel.send(urls)
-                await asyncio.sleep(2)
-
-        await asyncio.sleep(60)
 
 
 if __name__ == "__main__" and DISCORD_TOKEN is not None:
