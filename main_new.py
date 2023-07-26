@@ -545,8 +545,8 @@ async def football_poster() -> None:
 
     vk = VK(str(VK_TOKEN))
     channels_to_post = [
-        # 1094277109372952637,  # football
-        831502411411095562,  # pg general
+        1094277109372952637,  # football
+        # 831502411411095562,  # pg general
     ]
     channels = [bot.get_channel(i) for i in channels_to_post]
 
