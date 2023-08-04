@@ -94,7 +94,7 @@ def dt_os() -> str:
 async def logimage(url_list: list[str]) -> list[str]:
     ret_list: list[str] = []
     for ind, link in enumerate(url_list):
-        resp = await client.get(link)
+        resp = await client.get(link, follow_redirects=True)
         fname = f"images/{dt_os()}_{ind}_image.png"
         with open(fname, "wb") as f:
             f.write(resp.content)
