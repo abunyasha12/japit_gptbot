@@ -514,18 +514,26 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
 
 
 @bot.hybrid_command(hidden=True)
-async def synchronise(ctx: commands.Context) -> None:
+async def synchronise(ctx: commands.Context, glbl: str | None = None) -> None:
     """
     sync commands
     """
     if ctx.author.id not in users_allowed_to_sync or ctx.guild is None:
         return
+
     log.info(f"sync requested in {ctx.guild}")
     await ctx.defer(ephemeral=True)
     SD.refresh_loras()
-    bot.tree.copy_global_to(guild=ctx.guild)
-    comms = await bot.tree.sync(guild=ctx.guild)
-    await ctx.reply(f"SYNCED {comms}", ephemeral=True)
+    if glbl == "CLEAR":
+        comms = await bot.tree.sync(guild=ctx.guild)
+        await ctx.author.send(f"SYNCED {len(comms)}")
+    elif glbl:
+        comms = await bot.tree.sync()
+        await ctx.author.send(f"SYNCED GLOBAL {len(comms)}")
+    else:
+        bot.tree.copy_global_to(guild=ctx.guild)  # type: ignore
+        comms = await bot.tree.sync(guild=ctx.guild)
+        await ctx.author.send(f"SYNCED {len(comms)}")
 
 
 @bot.event
