@@ -25,6 +25,7 @@ import plugins.OA_tools as OA
 from plugins.openai import ConversationLog
 import plugins.SD_tools as SD
 from plugins.TLator import MyTranslator
+import plugins.vicuna_tools as VT
 
 log = logging.getLogger()
 logging.getLogger("openai").setLevel(logging.WARNING)
@@ -264,7 +265,7 @@ async def sdimage(ctx: discord.Interaction, prompt: str, height: SD.resolutions,
                 view=view,
             )
         except Exception as e:
-            log.warning(str(e))
+            log.warning(str(e.__class__.__name__))
             await ctx.followup.send(str(e))
     else:
         await ctx.followup.send("SD offline! Try DALL-E **/image** instead.")
@@ -392,6 +393,86 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
         text = text[:200]
 
     replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel.id)
+
+    result = f"**{ctx.user.display_name}**: {text}\n**{bot.user.name}**: "  # type: ignore
+    channel = ctx.channel
+    if not isinstance(channel, (discord.TextChannel)):
+        return
+
+    if len(result) + len(replied) < 1900:
+        # print("OK. SHORT ENOUGH")
+        await ctx.followup.send(content=result + replied, silent=False)
+        result = ""
+        log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied[:50]}")
+        return
+
+    def split_iter(text: str) -> Generator[str, None, None]:
+        """Split oversized strings"""
+
+        for line in text.splitlines():
+            if (lenline := len(line)) > MAX_MSG_LEN:
+                for i in range(0, lenline, MAX_MSG_LEN):
+                    yield line[i : i + MAX_MSG_LEN]
+            else:
+                yield line
+
+    for line in split_iter(replied):
+        if len(result) + len(line) < MAX_MSG_LEN:
+            result += line + "\n"
+            continue
+
+        if len(matches := re.findall(r"```(?:(\w+)\b(?>\n))?", result)) % 2 == 1:
+            tag = matches[-1]
+            result += "```"
+
+            if not sent:
+                await ctx.followup.send(result)
+                sent = True
+            else:
+                await channel.send(result)
+
+            result = f"```{tag}\n{line}"
+
+        else:
+            if not sent:
+                await ctx.followup.send(result)
+                sent = True
+            else:
+                await channel.send(result)
+
+            result = line
+
+    if len(result) > 0 and result != f"```{tag}\n" and result != f"```{tag}\n```\n":
+        if result.count("```") % 2 == 1:
+            result += "```"
+
+        if not sent:
+            await ctx.followup.send(result)
+        else:
+            await channel.send(result)
+
+    log.info(f"ChatGPT reply in {ctx.channel} {ctx.channel_id} : {replied}")
+
+
+@bot.tree.command(name="temp_chat")
+@app_commands.describe(text="Your message to ChatGPT")
+@app_commands.guilds(*guilds_ids)
+@app_commands.checks.cooldown(1, 30, key=lambda i: (i.guild_id, i.user.id))
+async def temp_chat(ctx: discord.Interaction, text: str) -> None:
+    if ctx.channel is None:
+        return
+
+    await ctx.response.defer()
+    log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text[:50]}")
+
+    tag = None
+    sent = False
+    if text.startswith("$$$"):
+        text.replace("$$$", "")
+    else:
+        text = text[:200]
+
+    replied = await VT.TextGenerator().generate_text(text)
 
     result = f"**{ctx.user.display_name}**: {text}\n**{bot.user.name}**: "  # type: ignore
     channel = ctx.channel

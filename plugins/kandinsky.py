@@ -5,12 +5,10 @@ from dotenv import load_dotenv
 import replicate
 
 resolutions = Literal["384", "512", "640", "704", "768", "960", "1024"]
+load_dotenv()
 
 
 class ImageGenerator:
-    def __init__(self: Self) -> None:
-        load_dotenv()
-
     async def generate_image(self: Self, prompt: str = "A moss covered astronaut with a black background", height: int = 512, width: int = 512) -> list[str]:
         num = 1 if height > 640 or width > 640 else 2
         loop = asyncio.get_event_loop()
