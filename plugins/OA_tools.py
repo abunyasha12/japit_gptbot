@@ -60,13 +60,14 @@ class ChatGPT:
         with path.open("w", encoding="utf-8") as file:
             json.dump(self.conversations[convo_id].dict(exclude_none=True), file, indent=4, ensure_ascii=False)
 
-    async def chat_completion(self, conversation: ConversationLog, convo_id: int = 1093166962428882996) -> str:
+    async def chat_completion(self, conversation: ConversationLog, convo_id: int = 1093166962428882996, model: str = "gpt-3.5-turbo") -> str:
         openai.api_key = self.oaitoken
         self.add_to_conversation(conversation, convo_id)
         messages = self.get_max_messages(convo_id=convo_id)
 
         try:
-            content: str = await OpenAI_Typed.ChatCompletion.acreate(model="gpt-4", messages=messages)
+            print(f"MODEL USED: {model}")
+            content: str = await OpenAI_Typed.ChatCompletion.acreate(model=model, messages=messages)
 
             self.add_to_conversation(ConversationLog(content=content), convo_id)
 

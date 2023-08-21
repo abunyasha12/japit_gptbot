@@ -1,7 +1,6 @@
 import logging
 
 from typing import Self
-import asyncio
 from collections.abc import Generator
 from itertools import islice
 import logging.handlers
@@ -36,10 +35,7 @@ log.setLevel(logging.INFO)
 
 fhandler = logging.handlers.TimedRotatingFileHandler("./logs/logfile.log", "D", backupCount=30, encoding="utf-8")
 dt_fmt = "%Y-%m-%d %H:%M:%S"
-fmt = logging.Formatter(
-    "[%(asctime)s][%(levelname)s][%(name)s][%(funcName)s:%(lineno)d] %(message)s",
-    dt_fmt,
-)
+fmt = logging.Formatter("[%(asctime)s][%(levelname)s][%(name)s][%(funcName)s:%(lineno)d] %(message)s", dt_fmt)
 fhandler.setFormatter(fmt)
 log.addHandler(fhandler)
 
@@ -62,9 +58,26 @@ guilds_ids = [
     333700550862569472,  # japit
 ]
 
-sfw_channels = [1093166962428882996, 831502411411095562]  # japit.gpt  # pg.general
+SFW_CHANNELS = [
+    1093166962428882996,  # japit.gpt
+    831502411411095562,  # pg.general
+]
 
-users_allowed_to_sync = [142228355104636928, 264168634123812865]  # drug  # tiki
+USERS_ALLOWED_TO_SYNC = [
+    142228355104636928,  # drug
+    264168634123812865,  # tiki
+]
+DONOR_ROLES = [
+    517042048486866945,  # дающий надежду
+    517042296315838464,  # рука помощи
+    517042391337664512,  # неравнодушный
+    952948519394754560,  # прекраснейший
+    517042503166197761,  # преданный меценат
+    517042551145103380,  # превозмогатор
+    639651423386206208,  # олимпиец
+    517042600205615117,  # пронзающий
+    1102985346989441086,  # вор в законе тестовая
+]
 
 MAX_MSG_LEN = 1900
 
@@ -136,7 +149,18 @@ cgpt = OA.ChatGPT(str(OPENAI_TOKEN))
 def check_sfw(channel_id: int) -> bool:
     """Проверка канала в списке SFW"""
 
-    return channel_id in sfw_channels
+    return channel_id in SFW_CHANNELS
+
+
+def check_donor(ctx: discord.Interaction) -> bool:
+    if not ctx.user:
+        return False
+
+    role_ids = [i.id for i in ctx.user.roles]  # type: ignore
+    if [i for i in role_ids if i in DONOR_ROLES]:
+        return True
+
+    return False
 
 
 async def send_dm(msg: discord.Message, usr: discord.User | discord.Member) -> None:
@@ -383,16 +407,20 @@ async def chat(ctx: discord.Interaction, text: str) -> None:
         return
 
     await ctx.response.defer()
-    log.info(f"{ctx.user} asked in {ctx.channel} {ctx.channel_id}: {text[:50]}")
+
+    model = "gpt-4" if check_donor(ctx) else "gpt-3.5-turbo"
+
+    log.info(f"{ctx.user} asked in [ {ctx.channel} | {ctx.channel_id} ] using '{model}': {text[:50]}")
 
     tag = None
     sent = False
+
     if text.startswith("$$$"):
         text.replace("$$$", "")
     else:
         text = text[:200]
 
-    replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel.id)
+    replied = await cgpt.chat_completion(ConversationLog(user_id=ctx.user.id, user_handle=str(ctx.user), role="user", content=text), convo_id=ctx.channel.id, model=model)
 
     result = f"**{ctx.user.display_name}**: {text}\n**{bot.user.name}**: "  # type: ignore
     channel = ctx.channel
@@ -599,7 +627,7 @@ async def synchronise(ctx: commands.Context, glbl: str | None = None) -> None:
     """
     sync commands
     """
-    if ctx.author.id not in users_allowed_to_sync or ctx.guild is None:
+    if ctx.author.id not in USERS_ALLOWED_TO_SYNC or ctx.guild is None:
         return
 
     log.info(f"sync requested in {ctx.guild}")
