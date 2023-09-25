@@ -14,3 +14,4 @@ Dockerfile
 .dockerignore
 .editorconfig
 localai_tools.py
+venv

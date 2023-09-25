@@ -103,7 +103,7 @@ class EnvelopeButton(Button):
     def __init__(self: Self) -> None:
         super().__init__(custom_id="persist:envelope_button", emoji="✉️")
 
-    async def callback(self, interaction: discord.Interaction) -> None:  # noqa: d102
+    async def callback(self: Self, interaction: discord.Interaction) -> None:  # noqa: D102
         await interaction.response.defer()
         if interaction.message is None:
             return
@@ -154,6 +154,7 @@ def check_sfw(channel_id: int) -> bool:
 
 
 def check_donor(ctx: discord.Interaction) -> bool:
+    """Проверяет есть ли у пользователя роль донатера из списка DONOR_ROLES"""
     if not ctx.user:
         return False
 
@@ -247,8 +248,9 @@ async def image(ctx: discord.Interaction, prompt: str, resolution: OA.resolution
         view.msg = await ctx.followup.send(content=image_url, view=view)
     except OA.InvalidRequest:
         await ctx.followup.send("InvalidRequest. Probably safety filters")
-    except Exception:
-        await ctx.followup.send("Unknown exception.")
+    except Exception as e:
+        log.warning(f"Exception while generating dall-e image: [ {e.__class__.__name__} ] {e}")
+        await ctx.followup.send(f"Exception while generating dall-e image: [ {e.__class__.__name__} ] {e}")
 
 
 @bot.tree.command(
@@ -614,7 +616,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     if payload.emoji.name == "✉️":
         await send_dm(msg, usr)
 
-    if payload.emoji.name == "🗑️" or payload.emoji.name == "❌":
+    if payload.emoji.name in ("🗑️", "❌"):
         if msg.interaction is None:
             return
 
